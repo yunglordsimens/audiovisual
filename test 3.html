@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Typography Research Site: Web-Based Experiments & Collections</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/p5.min.js"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            height: 100%;
+            width: 100%;
+        }
+        #background-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+        .container {
+            display: flex;
+            height: 100vh;
+            width: 100vw;
+            position: relative;
+            z-index: 1;
+        }
+        .menu {
+            flex: 0 1 50%;
+            height: 100%;
+            overflow-y: auto;
+            padding: 20px;
+            box-sizing: border-box;
+            background: transparent;
+            color: #00FFFF;
+            font-family: monospace;
+            font-size: 10px;
+            text-shadow: 0 0 5px #00FFFF;
+            white-space: pre;
+            position: relative;
+        }
+        .resizer {
+            flex: 0 0 5px;
+            background: #00FFFF;
+            cursor: ew-resize;
+            opacity: 0.5;
+            transition: opacity 0.3s;
+        }
+        .resizer:hover {
+            opacity: 1;
+        }
+        .graph {
+            flex: 1;
+            height: 100%;
+            background: transparent;
+            position: relative;
+        }
+        .menu::-webkit-scrollbar {
+            display: none;
+        }
+        .menu {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .clickable {
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .clickable:hover {
+            color: #00FFCC;
+            text-shadow: 0 0 10px #00FFCC;
+        }
+        .clickable.active {
+            color: yellow;
+            text-shadow: 0 0 15px yellow;
+            background: rgba(255, 255, 0, 0.1);
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+        #description {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 40%;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.85);
+            color: #00FFCC;
+            border-radius: 10px;
+            border: 1px solid #00FFFF;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.4);
+            display: none;
+            z-index: 10;
+            font-family: monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            text-align: right;
+            white-space: pre-wrap;
+        }
+        h1, h2 {
+            color: #00FFFF;
+            text-shadow: 0 0 5px #00FFFF;
+        }
+        /* Стили для D3 графа */
+        rect.active {
+            fill: yellow !important;
+            stroke: #00FFFF;
+            stroke-width: 3;
+        }
+        text.active {
+            fill: yellow !important;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div id="background-canvas"></div>
+    <div class="container">
+        <div class="menu">
+            <h1>Typography Research Site: Web-Based Experiments & Collections</h1>
+            <div class="tree">
+                                                         <span class="clickable" data-id="root">Typography Research Site Web-Based Experiments & Collections</span>
+                      <span class="clickable" data-id="1">1: Basics HTML + CSS + JS Core Standards for Text Manipulation</span>─┼─┐
+                                                                                     │ ├─ <span class="clickable" data-id="1-1">Canvas Typography Pixel Effects & Basic Animations</span>
+                                                                                     │ ├─ <span class="clickable" data-id="1-2">CSS Kinetic Text Animations & Transitions</span>
+                                                                                     │ ├─ <span class="clickable" data-id="1-3">CSS Effects Filters & Transforms</span>
+                                                                                     │ ├─ <span class="clickable" data-id="1-4">SVG Text Vector Paths & Outlines</span>
+                                                                                     │ ├─ <span class="clickable" data-id="1-5">JS DOM Text Dynamic Generation & Events</span>
+                                                                                     │ └─ <span class="clickable" data-id="1-6">Web Anim API Programmatic Easing & Transitions</span>
+    <span class="clickable" data-id="2">2: JavaScript Libraries Built on Canvas/WebGL Enhanced Visuals & Interactivity</span>  ─┤
+                                                                                     ├─ <span class="clickable" data-id="2-1">p5.js Creative Coding Framework</span>
+                                                                                     │                  ├─ <span class="clickable" data-id="2-1-1">Typography Experiments Basic Manipulation & Effects</span>
+                                                                                     │                  ├─ <span class="clickable" data-id="2-1-2">Generative Typography Algorithmic & Procedural</span>
+                                                                                     │                  ├─ <span class="clickable" data-id="2-1-3">Kinetic Typography Motion & Animation</span>
+                                                                                     │                  ├─ <span class="clickable" data-id="2-1-4">Interactive Typography User-Driven Changes</span>
+                                                                                     │                  ├─ <span class="clickable" data-id="2-1-5">Text Effects Distortions & Particles</span>
+                                                                                     │                  ├─ <span class="clickable" data-id="2-1-6">Sound Reactive Typography Audio Responses</span>
+                                                                                     │                  ├─ <span class="clickable" data-id="2-1-7">Audiovisual Typography Sound-Visual Integrations</span>
+                                                                                     │                  └─ <span class="clickable" data-id="2-1-8">Design Tools Typography Creation Aids</span>
+                                                                                     ├─ <span class="clickable" data-id="2-2">Three.js 3D Rendering with WebGL</span>
+                                                                                     │                  ├─ <span class="clickable" data-id="2-2-1">3D Text Geometries Extruded & Spatial Letters</span>
+                                                                                     │                  ├─ <span class="clickable" data-id="2-2-2">Shader Materials Custom Effects on Fonts</span>
+                                                                                     │                  ├─ <span class="clickable" data-id="2-2-3">Camera Interactions Orbiting & Viewing Type</span>
+                                                                                     │                  └─ <span class="clickable" data-id="2-2-4">Particle-Based Fonts Dynamic Dispersions</span>
+                                                                                     ├─ <span class="clickable" data-id="2-3">D3.js Data-Driven Visualizations</span>
+                                                                                     │                  ├─ <span class="clickable" data-id="2-3-1">Word Clouds Force-Directed Layouts</span>
+                                                                                     │                  ├─ <span class="clickable" data-id="2-3-2">Text Hierarchies Animated Structures</span>
+                                                                                     │                  └─ <span class="clickable" data-id="2-3-3">Data-Bound Animations Transitions & Updates</span>
+                                                                                     ├─ <span class="clickable" data-id="2-4">Zdog Pseudo-3D Illustrations</span>
+                                                                                     │                  ├─ <span class="clickable" data-id="2-4-1">3D Letter Icons Flat-Shaded Models</span>
+                                                                                     │                  └─ <span class="clickable" data-id="2-4-2">Animated Text Shapes Simple Rotations</span>
+                                                                                     ├─ <span class="clickable" data-id="2-5">Paper.js Vector Graphics & Paths</span>
+                                                                                     │                  ├─ <span class="clickable" data-id="2-5-1">Bezier Glyph Editing Curve Manipulations</span>
+                                                                                     │                  └─ <span class="clickable" data-id="2-5-2">Deformable Text Path-Based Distortions</span>
+                                                                                     ├─ <span class="clickable" data-id="2-6">opentype.js Font Parsing & Editing</span>
+                                                                                     │                  ├─ <span class="clickable" data-id="2-6-1">Glyph Manipulations Shape Extractions</span>
+                                                                                     │                  └─ <span class="clickable" data-id="2-6-2">Custom Kerning Font Subsetting Experiments</span>
+                      <span class="clickable" data-id="3">3: WebGL & Shaders GPU-Accelerated Effects Complex Distortions</span>─┤
+                                                                                     ├─ <span class="clickable" data-id="3-1">Raw WebGL Native GPU Rendering</span>
+                                                                                     │                  ├─ <span class="clickable" data-id="3-1-1">Text Fragment Shaders Glow & Fragmentation</span>
+                                                                                     │                  └─ <span class="clickable" data-id="3-1-2">Vertex Distortions Custom Geometry Effects</span>
+                                                                                     ├─ <span class="clickable" data-id="3-2">Regl Simplified WebGL Wrapper</span>
+                                                                                     │                  ├─ <span class="clickable" data-id="3-2-1">Modular Shaders Noise & Text Distortions</span>
+                                                                                     │                  └─ <span class="clickable" data-id="3-2-2">Performance Optimizations High-Res Type</span>
+                                                                                     ├─ <span class="clickable" data-id="3-3">GLSL Shaders Shadertoy-Style Effects</span>
+                                                                                     │                  ├─ <span class="clickable" data-id="3-3-1">Wavy & Fractal Text Real-Time Animations</span>
+                                                                                     │                  └─ <span class="clickable" data-id="3-3-2">Psychedelic Distortions Color & Pattern Shifts</span>
+                                                                                     ├─ <span class="clickable" data-id="3-4">glslify Modular Shader Composition</span>
+                                                                                     │                  ├─ <span class="clickable" data-id="3-4-1">Reusable Modules Audio-Modulated Effects</span>
+                                                                                     │                  └─ <span class="clickable" data-id="3-4-2">Browserifiable Shaders Typography Integrations</span>
+                                                                                     ├─  <span class="clickable" data-id="3-5">WebGPU Emerging High-Perf API</span>
+                                                                                     │                  ├─ <span class="clickable" data-id="3-5-1">VR/AR Text Rendering Efficient Shaders</span>
+                                                                                     │                  └─ <span class="clickable" data-id="3-5-2">Next-Gen Distortions Advanced Computations</span>
+    <span class="clickable" data-id="4">4: Real-Time Input & Interactivity Device & Media APIs Responsive Experiments</span>   ─┤
+                                                                                     ├─ <span class="clickable" data-id="4-1">API Microphone & FFT Analysis</span>
+                                                                                     │                  ├─ <span class="clickable" data-id="4-1-1">Beat-Pulsing Letters Frequency Scaling</span>
+                                                                                     │                  └─ <span class="clickable" data-id="4-1-2">Sound Visualizers Text Waveforms</span>
+                                                                                     ├─ <span class="clickable" data-id="4-2">Web MIDI API Controller Integrations</span>
+                                                                                     │                  ├─ <span class="clickable" data-id="4-2-1">Knob-Twisted Fonts Real-Time Adjustments</span>
+                                                                                     │                  └─ <span class="clickable" data-id="4-2-2">MIDI-Note Animations Glyph Transformations</span>
+                                                                                     ├─ <span class="clickable" data-id="4-3">WebRTC / getUserMedia Camera & Streams</span>
+                                                                                     │                  ├─ <span class="clickable" data-id="4-3-1">Face-Tracking Type Movement-Reactive</span>
+                                                                                     │                  └─ <span class="clickable" data-id="4-3-2">Video-Input Distortions Text Overlays</span>
+                                                                                     ├─ <span class="clickable" data-id="4-4">ml5.js Machine Learning in Browser</span>
+                                                                                     │                  ├─ <span class="clickable" data-id="4-4-1">Pose Detection Animations Hand-Gestured Changes</span>
+                                                                                     │                  └─ <span class="clickable" data-id="4-4-2">Body-Tracked Typography Interactive Scenes</span>
+                                                                                     ├─ <span class="clickable" data-id="4-5">TensorFlow.js On-Device Neural Nets</span>
+                                                                                     │                  ├─ <span class="clickable" data-id="4-5-1">Style Transfer Fonts AI-Generated Variations</span>
+                                                                                     │                  └─ <span class="clickable" data-id="4-5-2">Model-Trained Glyphs Generative Experiments</span>
+                                                                                     ├─ <span class="clickable" data-id="4-6">DeviceOrientation API Motion Inputs</span>
+                                                                                     │                  ├─ <span class="clickable" data-id="4-6-1">Tilt-Based Rotations Parallax Effects</span>
+                                                                                     │                  └─ <span class="clickable" data-id="4-6-2">Shake Interactions Scrambling & Reforms</span>
+                  <span class="clickable" data-id="5">5: Animation & Export Tools Polished Outputs Sequences & Sharing</span>  ─┤
+                                                                                     ├─ <span class="clickable" data-id="5-1">GSAP High-Performance Animations</span>
+                                                                                     │                  ├─ <span class="clickable" data-id="5-1-1">Kinetic Timelines Sequenced Stories</span>
+                                                                                     │                  └─ <span class="clickable" data-id="5-1-2">Easing & Morphing Smooth Text Changes</span>
+                                                                                     ├─ <span class="clickable" data-id="5-2">Lottie JSON-Based from After Effects</span>
+                                                                                     │                  ├─ <span class="clickable" data-id="5-2-1">Vector Playback Imported Animations</span>
+                                                                                     │                  └─ <span class="clickable" data-id="5-2-2">Interactive Lottie Text User-Triggered</span>
+                                                                                     ├─ <span class="clickable" data-id="5-3">CCapture.js Canvas Recording</span>
+                                                                                     │                  ├─ <span class="clickable" data-id="5-3-1">GIF/MP4 Exports Loop Captures</span>
+                                                                                     │                  └─ <span class="clickable" data-id="5-3-2">Generative Shares Video Outputs</span>
+                                                                                     ├─ <span class="clickable" data-id="5-4">html2canvas DOM to Image</span>
+                                                                                     │                  ├─ <span class="clickable" data-id="5-4-1">Layout Screenshots Sharing Experiments</span>
+                                                                                     │                  └─ <span class="clickable" data-id="5-4-2">Interactive Captures Static Exports</span>
+                        <span class="clickable" data-id="6">6: Advanced 3D, VR/AR Spatial Contexts Immersive Typography</span> ─┴─┐
+                                                                                       ├─  <span class="clickable" data-id="6-1">A-Frame WebVR/AR Framework</span>
+                                                                                       │                ├─ <span class="clickable" data-id="6-1-1">VR Sculptures 3D Typographic Environments</span>
+                                                                                       │                └─ <span class="clickable" data-id="6-1-2">AR Text Overlays Real-World Integrations</span>
+                                                                                       ├─ <span class="clickable" data-id="6-2">Babylon.js 3D Engine with Physics</span>
+                                                                                       │                ├─ <span class="clickable" data-id="6-2-1">Falling Letters Collision Simulations</span>
+                                                                                       │                └─ <span class="clickable" data-id="6-2-2">Material Textures Realistic Rendering</span>
+                                                                                       └─ <span class="clickable" data-id="6-3">PlayCanvas Game-Like 3D Engine</span>
+                                                                                                        ├─ <span class="clickable" data-id="6-3-1">Collaborative Editing Multi-User Scenes</span>
+                                                                                                        └─ <span class="clickable" data-id="6-3-2">Physics-Interactive Type Game Elements</span>
+            </div>
+        </div>
+        <div class="resizer"></div>
+        <div class="graph" id="graph-container">
+            <div id="description"></div>
+        </div>
+    </div>
+
+    <script>
+        // --- p5.js background animation ---
+        const totalAmount = 500;
+        let sizeThreshold = 5;
+        let decelerationFactor = 1.05;
+        let drag = 0.01;
+        let mX = 0, mY = 0;
+        let bodies = [];
+        let cnv;
+        let activeItem = null;
+        let currentHue = 0;
+        let animationMode = 'default';
+
+        function setup() {
+            cnv = createCanvas(windowWidth, windowHeight);
+            cnv.parent('background-canvas');
+            colorMode(HSB, 360, 100, 100);
+            background(0);
+            initDefaultParticles();
+        }
+
+        function initDefaultParticles() {
+            bodies = [];
+            for (let i = 0; i < totalAmount; i++) {
+                bodies.push(new Ball(0));
+            }
+        }
+
+        function draw() {
+            mX += 0.3 * (mouseX - mX);
+            mY += 0.3 * (mouseY - mY);
+
+            if (!activeItem) {
+                background(0, 0, 0, 0.05);
+                stroke(180, 50, 100, 0.03); // Стандартный цвет "покоя"
+                for (let i = 0; i < totalAmount; i++) bodies[i].render();
+                return;
+            }
+
+            // Анимации при активном элементе
+            if (animationMode === 'wave') {
+                background(0, 0, 0, 0.1);
+                let time = millis() * 0.001;
+                stroke((currentHue + time * 50) % 360, 80, 100, 0.05);
+                for (let i = 0; i < totalAmount; i++) {
+                    let b = bodies[i];
+                    b.Xv += 0.5 * sin(time + b.X * 0.01) * b.w;
+                    b.Yv += 0.3 * cos(time + b.Y * 0.01) * b.w;
+                    b.render();
+                }
+            } else if (animationMode === 'pulse') {
+                background(0, 0, 0, 0.1);
+                let pulse = (sin(millis() * 0.002) + 1) * 0.5;
+                stroke(currentHue, 80, 100 * pulse, 0.08);
+                for (let i = 0; i < totalAmount; i++) bodies[i].render();
+            } else if (animationMode === 'spiral') {
+                background(0, 0, 0, 0.1);
+                let time = millis() * 0.001;
+                stroke((currentHue + time * 30) % 360, 80, 100, 0.05);
+                for (let i = 0; i < totalAmount; i++) {
+                    let b = bodies[i];
+                    let angle = time + i * 0.1;
+                    b.Xv += cos(angle) * 0.5 * b.w;
+                    b.Yv += sin(angle) * 0.5 * b.w;
+                    b.render();
+                }
+            } else { // 'default' active state
+                background(0, 0, 0, 0.1);
+                stroke(currentHue, 80, 100, 0.05);
+                for (let i = 0; i < totalAmount; i++) bodies[i].render();
+            }
+        }
+
+        class Ball {
+            constructor(param) {
+                this.X = random(width);
+                this.Y = random(height);
+                this.w = random(1 / (3 + param / 2), 3 + param / 2);
+                this.Xv = this.Yv = 0;
+                this.pX = this.X;
+                this.pY = this.Y;
+            }
+            render() {
+                if (!mouseIsPressed) {
+                    this.Xv /= decelerationFactor;
+                    this.Yv /= decelerationFactor;
+                }
+                this.Xv += drag * (mX - this.X) * this.w;
+                this.Yv += drag * (mY - this.Y) * this.w;
+                this.X += this.Xv;
+                this.Y += this.Yv;
+                line(this.X, this.Y, this.pX, this.pY);
+                this.pX = this.X;
+                this.pY = this.Y;
+            }
+        }
+
+        // --- Описания для узлов ---
+        const descriptions = {
+            'root': `Центральный узел сайта по исследованию типографики. 
+Исследуйте интерактивные текстовые манипуляции, генеративный дизайн, 
+3D-рендеринг, ввод в реальном времени и иммерсивную VR/AR-типографику.
+
+Кликните на любой узел, чтобы погрузиться в категорию.`,
+            '1': `Основные веб-технологии для манипулирования текстом.
+Структура HTML, стилизация CSS и взаимодействие с JavaScript DOM 
+формируют основу всей веб-типографики.`,
+            '1-1': `Текстовые эффекты на уровне пикселей с использованием Canvas.
+Рисование текста на 2D-холсте, манипулирование пикселями, создание 
+глюк-эффектов и анимация отдельных букв.`,
+            '1-2': `CSS-анимации и переходы для кинетического текста.
+Используйте @keyframes, transform и transition для создания 
+плавного движения и реактивного текста.`,
+            '2-3': `D3.js: Визуализация данных.
+Этот сайт использует D3.js для создания графа, который вы видите!
+D3 также отлично подходит для создания иерархий, облаков слов и 
+анимаций, управляемых данными.`
+            // ... добавьте больше описаний по мере необходимости
+        };
+
+        // --- Парсинг данных и D3.js Граф ---
+        const nodeMap = {};
+        const nodes = [];
+        const links = [];
+
+        // Считываем узлы и ссылки прямо из HTML-меню
+        document.querySelectorAll('.clickable').forEach(el => {
+            const id = el.dataset.id;
+            const text = el.textContent.trim();
+            // Обрезаем длинные метки для графа
+            const label = text.substring(0, 30) + (text.length > 30 ? '...' : ''); 
+            nodeMap[id] = { id, label: label, fullText: text };
+            nodes.push(nodeMap[id]);
+
+            // Создаем связи
+            if (id.includes('-')) {
+                const parts = id.split('-');
+                const parentId = parts.slice(0, -1).join('-');
+                if (nodeMap[parentId]) {
+                    links.push({ source: parentId, target: id });
+                }
+            } else if (id !== 'root') {
+                links.push({ source: 'root', target: id });
+            }
+        });
+
+        // Настройка D3 Force Graph
+        const graphContainer = document.getElementById('graph-container');
+        const width = graphContainer.clientWidth;
+        const height = graphContainer.clientHeight;
+
+        const svg = d3.select('.graph')
+            .append('svg')
+            .attr('width', '100%')
+            .attr('height', '100%')
+            .attr('viewBox', [0, 0, width, height]);
+
+        const zoom = d3.zoom()
+            .scaleExtent([0.2, 5])
+            .filter(event => event.type === 'wheel' || event.button === 1) // Zoom колесом, Pan средней кнопкой
+            .on('zoom', zoomed);
+
+        svg.call(zoom);
+
+        const g = svg.append('g');
+
+        function zoomed({ transform }) {
+            g.attr('transform', transform);
+        }
+
+        const simulation = d3.forceSimulation(nodes)
+            .force('link', d3.forceLink(links).id(d => d.id).distance(80))
+            .force('charge', d3.forceManyBody().strength(-300))
+            .force('center', d3.forceCenter(width / 2, height / 2))
+            .force('collision', d3.forceCollide().radius(20));
+
+        const link = g.append('g')
+            .selectAll('line')
+            .data(links)
+            .enter()
+            .append('line')
+            .attr('stroke', '#00FFFF')
+            .attr('stroke-opacity', 0.6)
+            .attr('stroke-width', 1.5);
+
+        const node = g.append('g')
+            .selectAll('rect')
+            .data(nodes)
+            .enter()
+            .append('rect')
+            .attr('width', d => d.label.length * 6 + 10) // Динамическая ширина
+            .attr('height', 20)
+            .attr('rx', 5) // Закругленные углы
+            .attr('ry', 5)
+            .attr('fill', '#333')
+            .attr('stroke', '#00FFFF')
+            .attr('stroke-width', 1)
+            .attr('id', d => `node-${d.id}`) // Добавляем префикс, чтобы ID не конфликтовали
+            .call(d3.drag()
+                .on('start', dragstarted)
+                .on('drag', dragged)
+                .on('end', dragended));
+
+        const label = g.append('g')
+            .selectAll('text')
+            .data(nodes)
+            .enter()
+            .append('text')
+            .text(d => d.label)
+            .attr('fill', '#00FFFF')
+            .attr('font-family', 'monospace')
+            .attr('font-size', 10)
+            .attr('x', d => (d.label.length * 6 + 10) / 2) // Центрируем текст
+            .attr('y', 13)
+            .attr('text-anchor', 'middle')
+            .style('text-shadow', '0 0 3px #000')
+            .style('pointer-events', 'none'); // Чтобы клики проходили на прямоугольник
+
+        function dragstarted(event, d) {
+            if (!event.active) simulation.alphaTarget(0.3).restart();
+            d.fx = d.x;
+            d.fy = d.y;
+        }
+
+        function dragged(event, d) {
+            d.fx = event.x;
+            d.fy = event.y;
+        }
+
+        function dragended(event, d) {
+            if (!event.active) simulation.alphaTarget(0);
+            d.fx = null;
+            d.fy = null;
+        }
+
+        simulation.on('tick', () => {
+            link
+                .attr('x1', d => d.source.x)
+                .attr('y1', d => d.source.y)
+                .attr('x2', d => d.target.x)
+                .attr('y2', d => d.target.y);
+
+            node
+                .attr('x', d => d.x - (d.label.length * 6 + 10) / 2)
+                .attr('y', d => d.y - 10);
+
+            label
+                .attr('x', d => d.x)
+                .attr('y', d => d.y + 3);
+        });
+
+        // --- Логика Resizer ---
+        const resizer = document.querySelector('.resizer');
+        const menu = document.querySelector('.menu');
+        let isResizing = false;
+
+        resizer.addEventListener('mousedown', (e) => {
+            isResizing = true;
+            document.body.style.cursor = 'ew-resize';
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (isResizing) {
+                const newWidth = e.clientX;
+                if (newWidth > 100 && newWidth < window.innerWidth - 100) {
+                    menu.style.flex = `0 0 ${newWidth}px`;
+                }
+            }
+        });
+
+        document.addEventListener('mouseup', () => {
+            isResizing = false;
+            document.body.style.cursor = 'default';
+        });
+
+        // --- Логика Взаимодействия ---
+        let currentActive = null;
+
+        function showDescription(id) {
+            const descDiv = document.getElementById('description');
+            // Используем полное имя из nodeMap, а не обрезанное
+            const text = descriptions[id] || `Исследуйте: ${nodeMap[id].fullText}`;
+            descDiv.textContent = text;
+            descDiv.style.display = 'block';
+        }
+
+        function clearActive() {
+            if (currentActive) {
+                document.querySelector(`[data-id="${currentActive}"]`).classList.remove('active');
+                d3.select(`#node-${currentActive}`).classed('active', false);
+                // Находим текстовый элемент, связанный с узлом
+                d3.selectAll('text').filter(function(d) { return d && d.id === currentActive; }).classed('active', false);
+            }
+            document.getElementById('description').style.display = 'none';
+            activeItem = null;
+            animationMode = 'default';
+            // Не сбрасываем частицы, просто даем им "успокоиться"
+            currentActive = null;
+        }
+
+        function setActive(id) {
+            if (currentActive === id) { // Если кликнули по уже активному
+                clearActive();
+                return;
+            }
+            
+            clearActive();
+            activeItem = id;
+            currentActive = id;
+            
+            // Выбираем режим анимации и цвет
+            animationMode = ['wave', 'pulse', 'spiral', 'default'][Math.floor(Math.random() * 4)];
+            currentHue = (parseInt(id.split('-').pop() || '0') * 37) % 360; // Динамический цвет
+
+            // Пересоздаем частицы с новыми параметрами
+            bodies = [];
+            for (let i = 0; i < totalAmount; i++) {
+                bodies.push(new Ball(parseInt(id.split('-').pop() || '1')));
+            }
+
+            // Подсвечиваем меню и узел графа
+            document.querySelector(`[data-id="${id}"]`).classList.add('active');
+            const d3Node = d3.select(`#node-${id}`);
+            d3Node.classed('active', true);
+            // Подсвечиваем текст на графе
+            d3.selectAll('text').filter(function(d) { return d && d.id === id; }).classed('active', true);
+
+            showDescription(id);
+            simulation.alpha(0.3).restart(); // "Толкаем" граф, чтобы выделить узел
+        }
+
+        // Клик по меню
+        document.querySelectorAll('.clickable').forEach(el => {
+            el.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const id = el.dataset.id;
+                setActive(id);
+            });
+        });
+
+        // Клик по узлу графа D3
+        node.on('click', (event, d) => {
+            event.stopPropagation();
+            setActive(d.id);
+        });
+
+        // Клик мимо (сброс)
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.clickable') && !e.target.closest('rect')) {
+                clearActive();
+            }
+        });
+
+        // --- Инициализация ---
+        initDefaultParticles();
+        
+        /* * --- ИСПРАВЛЕНИЕ ---
+         * Код ниже был удален, так как он относился к 
+         * библиотеке Cytoscape (cy) и вызывал ошибку в этом файле.
+         */
+        // cy.nodes().grabify(); // УДАЛЕНО
+        // document.addEventListener('click', (evt) => { ... }); // УДАЛЕНО
+
+    </script>
+</body>
+</html>
