@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSS Kinetic Showcase</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-family: monospace;
+            color: #00FFFF;
+        }
+
+        .container {
+            width: 80%;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            /* Включаем 3D-пространство для 3D-анимации */
+            perspective: 300px; 
+        }
+
+        .line {
+            font-size: 1.5rem; /* 1.5rem = ~24px, но зависит от настроек */
+            font-weight: bold;
+            text-transform: uppercase;
+            white-space: nowrap; /* Запрет переноса */
+            padding: 5px;
+            background: #111;
+            border: 1px solid #00FFFF;
+            border-radius: 5px;
+        }
+
+        /* Анимация 1: "Бегущая строка" (Marquee) */
+        .line-marquee {
+            /* animation: [имя] [длительность] [временная_функция] [повтор]
+            */
+            animation: marquee 10s linear infinite;
+        }
+        @keyframes marquee {
+            0%   { transform: translateX(100%); }
+            100% { transform: translateX(-100%); }
+        }
+
+        /* Анимация 2: "3D Вращение" (Transform) */
+        .line-rotate {
+            animation: rotate 8s linear infinite;
+            transform-origin: center center;
+        }
+        @keyframes rotate {
+            0%   { transform: rotateY(0deg); }
+            100% { transform: rotateY(360deg); }
+        }
+
+        /* Анимация 3: "Пульсация" (Transition - здесь не transition, а @keyframes) */
+        .line-pulse {
+            /* alternate = идет до 100%, потом обратно к 0% */
+            animation: pulse 2s ease-in-out infinite alternate;
+        }
+        @keyframes pulse {
+            0%   { 
+                transform: scale(1.0); 
+                color: #00FFFF;
+                border-color: #00FFFF;
+                text-shadow: 0 0 5px #00FFFF;
+            }
+            100% { 
+                transform: scale(1.05); 
+                color: #FFFF00;
+                border-color: #FFFF00;
+                text-shadow: 0 0 10px #FFFF00;
+            }
+        }
+
+    </style>
+</head>
+<body>
+    
+    <div class="container">
+        <div class="line line-marquee">
+            This is a CSS @keyframe animation
+        </div>
+        <div class="line line-rotate">
+            Transform: rotateY(360deg)
+        </div>
+        <div class="line line-pulse">
+            This is a CSS transition
+        </div>
+    </div>
+
+</body>
+</html>

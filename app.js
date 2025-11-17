@@ -134,7 +134,9 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.clickable-text').forEach(el => {
         const id = el.dataset.id;
         const text = el.textContent.trim();
-        const label = text; 
+    // --- ИСПРАВЛЕНИЕ 1: Обрезаем текст для ноды ---
+        const label = text.substring(0, 25) + (text.length > 25 ? '...' : '');
+    // --------------------------------------------- 
         
         nodeMap[id] = { 
             id, 

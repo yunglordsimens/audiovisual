@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Canvas Pixel Showcase</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-family: monospace;
+        }
+        canvas {
+            background-color: #000;
+        }
+        #controls {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            z-index: 10;
+        }
+    </style>
+</head>
+<body>
+    
+    <div id="controls">
+        <label for="f_power">Pixel Storm: </label>
+        <input type="range" id="f_power" min="0.05" max="1.5" value="0.5" step="0.01">
+    </div>
+    <canvas id="showcase_canvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('showcase_canvas');
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        
+        // Размеры берем из родительского iframe, с небольшим запасом
+        const width = window.innerWidth > 200 ? window.innerWidth : 300;
+        const height = window.innerHeight > 200 ? window.innerHeight : 250;
+        
+        canvas.width = width;
+        canvas.height = height;
+
+        let particles = [];
+        let stormFactor = 0.5;
+
+        // Элемент управления
+        const slider = document.getElementById('f_power');
+        slider.oninput = (e) => {
+            stormFactor = parseFloat(e.target.value);
+        };
+
+        // 1. Класс для частиц
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x + Math.random() * 20 - 10; // Исходная позиция X
+                this.y = y + Math.random() * 20 - 10; // Исходная позиция Y
+                this.originX = x; // Куда возвращаться
+                this.originY = y; // Куда возвращаться
+                this.color = color;
+                this.vx = 0; // Скорость
+                this.vy = 0;
+            }
+
+            // Обновление позиции
+            update() {
+                // Сила притяжения к дому
+                let dx = this.originX - this.x;
+                let dy = this.originY - this.y;
+                let distance = Math.sqrt(dx * dx + dy * dy);
+                
+                // Сила "шторма" (случайное блуждание)
+                this.vx += (Math.random() - 0.5) * stormFactor;
+                this.vy += (Math.random() - 0.5) * stormFactor;
+                
+                // Сила притяжения (возвращает домой)
+                if (distance > 1) {
+                    this.vx += dx * 0.01; 
+                    this.vy += dy * 0.01;
+                }
+
+                // Трение (замедление)
+                this.vx *= 0.95;
+                this.vy *= 0.95;
+
+                this.x += this.vx;
+                this.y += this.vy;
+            }
+
+            // Отрисовка
+            draw() {
+                ctx.fillStyle = this.color;
+                ctx.fillRect(this.x, this.y, 2, 2); // Рисуем частицу 2x2 пикселя
+            }
+        }
+
+        // 2. Инициализация (сканирование текста)
+        function init() {
+            particles = []; // Сброс
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 30px monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText('PIXEL', width / 2, height / 2 - 20);
+            ctx.fillText('EFFECTS', width / 2, height / 2 + 20);
+
+            // Сканируем холст
+            const imageData = ctx.getImageData(0, 0, width, height);
+            
+            for (let y = 0; y < height; y += 4) { // Шаг 4 для производительности
+                for (let x = 0; x < width; x += 4) {
+                    // Ищем не-черные пиксели
+                    if (imageData.data[(y * width + x) * 4 + 3] > 128) {
+                        let r = imageData.data[(y * width + x) * 4];
+                        let g = imageData.data[(y * width + x) * 4 + 1];
+                        let b = imageData.data[(y * width + x) * 4 + 2];
+                        let color = `rgb(${r},${g},${b})`;
+                        particles.push(new Particle(x, y, color));
+                    }
+                }
+            }
+            // Очищаем текст, оставляем только частицы
+            ctx.clearRect(0, 0, width, height);
+        }
+
+        // 3. Цикл анимации
+        function animate() {
+            ctx.clearRect(0, 0, width, height); // Очищаем холст
+            for (let i = 0; i < particles.length; i++) {
+                particles[i].update();
+                particles[i].draw();
+            }
+            requestAnimationFrame(animate);
+        }
+
+        init();
+        animate();
+    </script>
+</body>
+</html>

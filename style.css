@@ -97,6 +97,15 @@ h1, h2 {
     border-radius: 3px;
 }
 
+/* --- ИСПРАВЛЕНИЕ 3: Добавляем стиль для активных 'level' --- */
+.clickable-text.active[data-type="level"] {
+    color: #00FF00; /* Зеленый (как нода) */
+    text-shadow: 0 0 10px #00FF00;
+    background: rgba(0, 255, 0, 0.1);
+    padding: 2px 4px;
+    border-radius: 3px;
+}
+
 /* ASCII-арт не должен быть кликабельным */
 .ascii-art {
     cursor: default;
