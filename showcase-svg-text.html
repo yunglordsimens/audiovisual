@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale-1.0">
+    <title>SVG Text Showcase</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-family: monospace;
+            color: #00FFFF;
+        }
+
+        /* * SVG (Scalable Vector Graphics) - это графика, описанная кодом.
+         * Она не теряет качества при любом масштабировании.
+         */
+
+        svg {
+            width: 90%;
+            height: 90%;
+            border: 1px solid #333;
+            border-radius: 5px;
+        }
+
+        /* Стили для текста внутри SVG */
+        .svg-text {
+            font-size: 2.5rem; /* rem в SVG работает отлично */
+            font-weight: bold;
+            text-transform: uppercase;
+            /* text-anchor="middle" (в HTML) центрирует текст по 'x' */
+        }
+
+        /* 1. Эффект обводки (Outline) */
+        .text-outline {
+            fill: none; /* Убираем заливку */
+            stroke: #00FFFF;
+            stroke-width: 2px;
+        }
+
+        /* 2. Эффект текста по пути (Path) */
+        #text-path {
+            fill: #FFFF00;
+        }
+        
+        /* Сам путь (path) делаем видимым, но полупрозрачным */
+        #curve {
+            fill: none;
+            stroke: #555;
+            stroke-width: 1px;
+            stroke-dasharray: 5 5; /* Делает линию пунктирной */
+        }
+
+        /* 3. Эффект рисования (Drawing Animation) */
+        .text-draw {
+            fill: none;
+            stroke: #00FF00;
+            stroke-width: 2px;
+            /* * stroke-dasharray = длина штриха. 
+             * Мы делаем штрих очень длинным (500), чтобы он покрыл весь текст.
+             */
+            stroke-dasharray: 500;
+            /* * stroke-dashoffset = сдвиг штриха.
+             * Сдвигаем его на всю длину, "пряча" нарисованное.
+             */
+            stroke-dashoffset: 500;
+            /* Анимация будет сдвигать 'offset' обратно в 0 */
+            animation: draw 5s linear infinite;
+        }
+
+        @keyframes draw {
+            to {
+                /* Возвращаем сдвиг в 0, "проявляя" текст */
+                stroke-dashoffset: 0;
+            }
+        }
+
+    </style>
+</head>
+<body>
+    
+    <svg viewBox="0 0 500 300"> <!-- viewBox="[x_min] [y_min] [ширина] [высота]" -->
+        
+        <!-- 1. Текст с обводкой (Outline) -->
+        <text class="svg-text text-outline" x="50%" y="30%" text-anchor="middle">
+            SVG OUTLINE
+        </text>
+
+        <!-- 2. Текст по пути (Path) -->
+        <!-- Сначала определяем путь в <defs> (definitions) -->
+        <defs>
+            <!-- M = MoveTo, Q = Quadratic Bezier curve -->
+            <path id="curve" d="M 50 150 Q 250 100 450 150"></path>
+        </defs>
+        <!-- Теперь используем этот путь -->
+        <text class="svg-text" id="text-path">
+            <!-- textPath "привязывает" текст к пути с id="curve" -->
+            <textPath href="#curve">
+                Text... on a vector path...
+            </textPath>
+        </text>
+
+        <!-- 3. Анимация рисования (Animation) -->
+        <text class="svg-text text-draw" x="50%" y="80%" text-anchor="middle">
+            SELF-DRAWING
+        </text>
+
+    </svg>
+
+</body>
+</html>

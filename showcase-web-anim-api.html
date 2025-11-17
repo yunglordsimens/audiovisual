@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Animations API Showcase</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+            overflow: hidden;
+            background-color: #000;
+            font-family: monospace;
+            color: #00FFFF;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 25px; /* Больше отступ между дорожками */
+            padding-top: 20px;
+        }
+
+        .track {
+            /* Дорожка, по которой бежит шарик */
+            width: 90%;
+            border-bottom: 1px dashed #333;
+            height: 20px;
+        }
+
+        .label {
+            color: #00FFFF;
+            font-size: 0.9rem;
+            margin-bottom: 5px;
+        }
+
+        .ball {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background-color: #FF00FF; /* Magenta */
+            box-shadow: 0 0 10px #FF00FF;
+            /* Позволяет .animate() работать с transform */
+            will-change: transform; 
+        }
+
+    </style>
+</head>
+<body>
+    
+    <div class="container">
+
+        <!-- Дорожка 1: Linear (Линейная) -->
+        <div class="label">easing: 'linear' (постоянная скорость)</div>
+        <div class="track">
+            <div class="ball" id="ball1"></div>
+        </div>
+
+        <!-- Дорожка 2: Ease-in-out (Плавный старт/финиш) -->
+        <div class="label">easing: 'ease-in-out' (плавный старт/финиш)</div>
+        <div class="track">
+            <div class="ball" id="ball2" style="background-color: #FFFF00; box-shadow: 0 0 10px #FFFF00;"></div>
+        </div>
+
+        <!-- Дорожка 3: Bouncy (Пружинистая) -->
+        <div class="label">easing: 'cubic-bezier(0.68, -0.55, 0.27, 1.55)' (с отскоком)</div>
+        <div class="track">
+            <div class="ball" id="ball3" style="background-color: #00FF00; box-shadow: 0 0 10px #00FF00;"></div>
+        </div>
+
+        <!-- Дорожка 4: Steps (Пошаговая) -->
+        <div class="label">easing: 'steps(5, end)' (5 шагов)</div>
+        <div class="track">
+            <div class="ball" id="ball4" style="background-color: #FFFFFF; box-shadow: 0 0 10px #FFFFFF;"></div>
+        </div>
+
+    </div>
+
+    <script>
+        // Это и есть Web Animations API.
+        // Мы не используем CSS @keyframes.
+
+        // 1. Находим элементы
+        const ball1 = document.getElementById('ball1');
+        const ball2 = document.getElementById('ball2');
+        const ball3 = document.getElementById('ball3');
+        const ball4 = document.getElementById('ball4');
+
+        // 2. Определяем ключевые кадры (keyframes) в виде массива JS
+        const keyframes = [
+            { transform: 'translateX(0px)' },
+            { transform: 'translateX(300px)' } // Двигаемся на 300px вправо
+        ];
+
+        // 3. Определяем общие настройки времени (timing) в виде объекта JS
+        const timing = {
+            duration: 3000,         // 3 секунды
+            iterations: Infinity,   // Бесконечно
+            direction: 'alternate'  // Туда-обратно
+        };
+
+        // 4. Запускаем анимации с разными 'easing'
+        
+        // Линейная
+        ball1.animate(keyframes, {
+            ...timing, // Копируем общие настройки
+            easing: 'linear'
+        });
+
+        // Плавно
+        ball2.animate(keyframes, {
+            ...timing,
+            easing: 'ease-in-out'
+        });
+
+        // С отскоком (как пружина)
+        ball3.animate(keyframes, {
+            ...timing,
+            easing: 'cubic-bezier(0.68, -0.55, 0.27, 1.55)'
+        });
+
+        // Пошаговая
+        ball4.animate(keyframes, {
+            ...timing,
+            easing: 'steps(5, end)' // 5 "прыжков"
+        });
+
+    </script>
+</body>
+</html>

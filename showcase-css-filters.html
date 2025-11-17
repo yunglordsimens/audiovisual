@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSS Filters & Transforms Showcase</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-family: monospace;
+            color: #00FFFF;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            width: 90%;
+        }
+
+        .box {
+            background-color: #111;
+            border: 1px solid #00FFFF;
+            border-radius: 5px;
+            padding: 20px;
+            text-align: center;
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #FFFF00;
+            
+            /* Плавный переход для всех свойств */
+            transition: all 0.5s ease-in-out;
+        }
+        
+        .box-title {
+            font-size: 0.9rem;
+            color: #00FFFF;
+            text-transform: uppercase;
+            margin-bottom: 15px;
+            font-weight: normal;
+        }
+
+        /* 1. Filter: blur() (Размытие) */
+        .box-blur:hover {
+            filter: blur(3px);
+            color: #FF00FF;
+            border-color: #FF00FF;
+        }
+
+        /* 2. Filter: hue-rotate() (Смена цвета) */
+        .box-hue:hover {
+            /* 180deg = инвертирует цвет */
+            filter: hue-rotate(180deg); 
+        }
+
+        /* 3. Transform: skew() (Наклон) */
+        .box-skew:hover {
+            transform: skew(-15deg, 5deg);
+            color: #00FF00;
+            border-color: #00FF00;
+        }
+        
+        /* 4. Transform: scale() (Масштаб) */
+        .box-scale:hover {
+            transform: scale(1.2);
+            text-shadow: 0 0 10px #FFFF00;
+        }
+
+    </style>
+</head>
+<body>
+    
+    <div class="container">
+        
+        <div class="box box-blur">
+            <div class="box-title">filter: blur()</div>
+            HOVER ME
+        </div>
+        
+        <div class="box box-hue">
+            <div class="box-title">filter: hue-rotate()</div>
+            HOVER ME
+        </div>
+        
+        <div class="box box-skew">
+            <div class="box-title">transform: skew()</div>
+            HOVER ME
+        </div>
+
+        <div class="box box-scale">
+            <div class="box-title">transform: scale()</div>
+            HOVER ME
+        </div>
+
+    </div>
+
+</body>
+</html>

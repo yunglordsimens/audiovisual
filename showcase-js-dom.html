@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JS DOM Showcase</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+            overflow-y: auto;
+            background-color: #000;
+            font-family: monospace;
+            color: #00FFFF;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+
+        #text-input {
+            flex-grow: 1;
+            background: #111;
+            border: 1px solid #00FFFF;
+            color: #FFFF00;
+            padding: 10px;
+            font-family: monospace;
+            font-size: 1rem;
+            border-radius: 5px;
+        }
+        #text-input::placeholder {
+            color: #555;
+        }
+
+        #generate-btn {
+            background: #00FFFF;
+            color: #000;
+            border: none;
+            padding: 10px 15px;
+            font-family: monospace;
+            font-weight: bold;
+            font-size: 1rem;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: background 0.2s;
+        }
+        #generate-btn:hover {
+            background: #FFFF00;
+        }
+
+        #container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        /* Стиль для ДИНАМИЧЕСКИ созданного текста */
+        .dynamic-text {
+            background: #1a1a1a;
+            border: 1px solid #00FFFF;
+            padding: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease-out;
+            transform: scale(1);
+        }
+        
+        /* :hover (событие CSS) */
+        .dynamic-text:hover {
+            background: #220;
+            border-color: #FFFF00;
+            color: #FFFF00;
+            transform: scale(1.02); /* Немного увеличим */
+        }
+    </style>
+</head>
+<body>
+
+    <div class="controls">
+        <input type="text" id="text-input" placeholder="Type text here...">
+        <button id="generate-btn">Generate Element</button>
+    </div>
+
+    <!-- Этот контейнер будет заполняться с помощью JS -->
+    <div id="container">
+        <p style="color: #555;">(Click generated elements to remove them)</p>
+    </div>
+
+    <script>
+        // Получаем доступ к элементам DOM
+        const input = document.getElementById('text-input');
+        const button = document.getElementById('generate-btn');
+        const container = document.getElementById('container');
+
+        // Вешаем событие 'click' на кнопку
+        button.addEventListener('click', generateElement);
+
+        // Добавляем событие 'keyup' на поле ввода (для Enter)
+        input.addEventListener('keyup', (event) => {
+            if (event.key === 'Enter') {
+                generateElement();
+            }
+        });
+
+        function generateElement() {
+            const text = input.value;
+            if (text.trim() === '') return; // Не добавлять пустые строки
+
+            // 1. Dynamic Generation (Динамическое Создание)
+            const newElement = document.createElement('p');
+            newElement.className = 'dynamic-text';
+            newElement.textContent = `[Generated]: ${text}`;
+
+            // 2. Events (События)
+            // Добавляем 'click' событие на НОВЫЙ элемент
+            newElement.addEventListener('click', () => {
+                // При клике - анимируем исчезновение и удаляем из DOM
+                newElement.style.opacity = '0';
+                newElement.style.transform = 'scale(0.9)';
+                
+                // Ждем 300мс (пока идет CSS transition) и удаляем
+                setTimeout(() => {
+                    newElement.remove();
+                }, 300);
+            });
+
+            // Добавляем новый элемент в начало контейнера
+            container.prepend(newElement);
+
+            // Очищаем поле ввода и ставим фокус обратно
+            input.value = '';
+            input.focus();
+        }
+
+    </script>
+</body>
+</html>
