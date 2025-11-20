@@ -2,139 +2,342 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JS DOM Showcase</title>
+    <title>JS DOM Engine</title>
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
     <style>
-        body, html {
-            margin: 0;
-            padding: 20px;
-            box-sizing: border-box;
-            overflow-y: auto;
-            background-color: #000;
-            font-family: monospace;
-            color: #00FFFF;
+        :root {
+            --hue: 180;
+            --val-a: 0.5;
+            --val-b: 0.5;
+            --val-c: 0.1;
+            --primary: hsl(var(--hue), 100%, 50%);
+            --bg: transparent;
         }
 
-        .controls {
+        body {
+            margin: 0; overflow: hidden;
+            background: var(--bg);
+            font-family: 'Rajdhani', sans-serif;
+            height: 100vh;
+            display: flex; flex-direction: column;
+            color: var(--primary);
+        }
+
+        /* --- VIEWPORT --- */
+        .viewport {
+            flex: 1;
+            position: relative;
+            display: flex; justify-content: center; align-items: center;
+            overflow: hidden;
+        }
+
+        /* --- SELECTOR BAR --- */
+        .selector-bar {
+            height: 60px;
+            display: flex; justify-content: center; gap: 5px; padding: 10px;
+            background: rgba(0,0,0,0.8);
+            border-top: 1px solid var(--primary);
+            backdrop-filter: blur(5px);
+        }
+        .mode-btn {
+            background: transparent; border: 1px solid #333; color: #555;
+            font-family: 'Share Tech Mono', monospace; font-size: 12px; padding: 0 15px;
+            cursor: pointer; transition: all 0.2s;
+            clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+        }
+        .mode-btn:hover { border-color: var(--primary); color: var(--primary); }
+        .mode-btn.active { background: var(--primary); color: #000; font-weight: bold; box-shadow: 0 0 15px var(--primary); }
+
+        /* ================= MODES STYLES ================= */
+
+        /* MODE 1: DECODER */
+        .decoder-container {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 5vw;
+            text-transform: uppercase;
+            letter-spacing: 5px;
             display: flex;
-            gap: 10px;
-            width: 100%;
-            margin-bottom: 20px;
+        }
+        .char-span {
+            display: inline-block;
+            min-width: 0.6em;
+            text-align: center;
+            transition: color 0.1s;
+        }
+        .char-span.decoding { color: #FFF; text-shadow: 0 0 10px #FFF; }
+        .char-span.done { color: var(--primary); }
+
+
+        /* MODE 2: KINETIC STACK */
+        .stack-container {
+            position: relative;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        }
+        .stack-layer {
+            font-size: 6vw;
+            font-weight: 900;
+            line-height: 0.85;
+            text-transform: uppercase;
+            color: transparent;
+            -webkit-text-stroke: 1px rgba(255, 255, 255, 0.3);
+            transition: all 0.1s linear;
+        }
+        .stack-layer.main {
+            color: var(--primary);
+            -webkit-text-stroke: 0;
+            text-shadow: 0 0 20px var(--primary);
+            z-index: 10;
         }
 
-        #text-input {
-            flex-grow: 1;
-            background: #111;
-            border: 1px solid #00FFFF;
-            color: #FFFF00;
-            padding: 10px;
-            font-family: monospace;
-            font-size: 1rem;
-            border-radius: 5px;
-        }
-        #text-input::placeholder {
-            color: #555;
-        }
 
-        #generate-btn {
-            background: #00FFFF;
-            color: #000;
-            border: none;
-            padding: 10px 15px;
-            font-family: monospace;
+        /* MODE 3: FLOAT (Letter Physics) */
+        .float-container {
+            position: relative;
+            width: 100%; height: 100%;
+        }
+        .float-char {
+            position: absolute;
+            font-size: 4vw;
             font-weight: bold;
-            font-size: 1rem;
-            cursor: pointer;
-            border-radius: 5px;
-            transition: background 0.2s;
-        }
-        #generate-btn:hover {
-            background: #FFFF00;
+            user-select: none;
+            cursor: default;
+            will-change: transform;
         }
 
-        #container {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        /* Стиль для ДИНАМИЧЕСКИ созданного текста */
-        .dynamic-text {
-            background: #1a1a1a;
-            border: 1px solid #00FFFF;
-            padding: 10px;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: all 0.3s ease-out;
-            transform: scale(1);
-        }
-        
-        /* :hover (событие CSS) */
-        .dynamic-text:hover {
-            background: #220;
-            border-color: #FFFF00;
-            color: #FFFF00;
-            transform: scale(1.02); /* Немного увеличим */
-        }
     </style>
 </head>
 <body>
 
-    <div class="controls">
-        <input type="text" id="text-input" placeholder="Type text here...">
-        <button id="generate-btn">Generate Element</button>
-    </div>
+    <div class="viewport" id="viewport">
+        </div>
 
-    <!-- Этот контейнер будет заполняться с помощью JS -->
-    <div id="container">
-        <p style="color: #555;">(Click generated elements to remove them)</p>
+    <div class="selector-bar">
+        <button class="mode-btn active" onclick="setMode('decoder', this)">DECODER</button>
+        <button class="mode-btn" onclick="setMode('stack', this)">STACK</button>
+        <button class="mode-btn" onclick="setMode('float', this)">FLOAT</button>
     </div>
 
     <script>
-        // Получаем доступ к элементам DOM
-        const input = document.getElementById('text-input');
-        const button = document.getElementById('generate-btn');
-        const container = document.getElementById('container');
+        const viewport = document.getElementById('viewport');
+        let currentMode = 'decoder';
+        let animationId = null;
+        
+        let state = {
+            text: "DOM_CORE",
+            params: { a: 0.5, b: 0.5, c: 0.1 },
+            hue: 180
+        };
 
-        // Вешаем событие 'click' на кнопку
-        button.addEventListener('click', generateElement);
-
-        // Добавляем событие 'keyup' на поле ввода (для Enter)
-        input.addEventListener('keyup', (event) => {
-            if (event.key === 'Enter') {
-                generateElement();
+        // --- 1. COMMUNICATION ---
+        window.addEventListener('message', (e) => {
+            if (e.data.type === 'UPDATE_STATE') {
+                const oldText = state.text;
+                state = e.data;
+                updateCSSVars();
+                
+                // Перезапускаем только если текст изменился или режим требует рестарта
+                if (oldText !== state.text) {
+                    initMode();
+                }
             }
         });
 
-        function generateElement() {
-            const text = input.value;
-            if (text.trim() === '') return; // Не добавлять пустые строки
-
-            // 1. Dynamic Generation (Динамическое Создание)
-            const newElement = document.createElement('p');
-            newElement.className = 'dynamic-text';
-            newElement.textContent = `[Generated]: ${text}`;
-
-            // 2. Events (События)
-            // Добавляем 'click' событие на НОВЫЙ элемент
-            newElement.addEventListener('click', () => {
-                // При клике - анимируем исчезновение и удаляем из DOM
-                newElement.style.opacity = '0';
-                newElement.style.transform = 'scale(0.9)';
-                
-                // Ждем 300мс (пока идет CSS transition) и удаляем
-                setTimeout(() => {
-                    newElement.remove();
-                }, 300);
-            });
-
-            // Добавляем новый элемент в начало контейнера
-            container.prepend(newElement);
-
-            // Очищаем поле ввода и ставим фокус обратно
-            input.value = '';
-            input.focus();
+        function updateCSSVars() {
+            document.documentElement.style.setProperty('--hue', state.hue);
+            document.documentElement.style.setProperty('--val-a', state.params.a);
+            document.documentElement.style.setProperty('--val-b', state.params.b);
+            document.documentElement.style.setProperty('--val-c', state.params.c);
         }
+
+        window.setMode = function(mode, btn) {
+            document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentMode = mode;
+            initMode();
+        }
+
+        // --- 2. MODES LOGIC ---
+
+        function initMode() {
+            // Очистка
+            cancelAnimationFrame(animationId);
+            viewport.innerHTML = '';
+            
+            if (currentMode === 'decoder') initDecoder();
+            else if (currentMode === 'stack') initStack();
+            else if (currentMode === 'float') initFloat();
+        }
+
+
+        // === MODE A: DECODER (Matrix Style) ===
+        function initDecoder() {
+            const container = document.createElement('div');
+            container.className = 'decoder-container';
+            
+            const chars = state.text.split('');
+            const spans = [];
+            
+            chars.forEach(char => {
+                const s = document.createElement('span');
+                s.className = 'char-span decoding';
+                s.innerText = randomChar();
+                s.dataset.target = char; // Целевой символ
+                s.dataset.cycles = 0;    // Сколько раз менялся
+                container.appendChild(s);
+                spans.push(s);
+            });
+            viewport.appendChild(container);
+
+            function loop() {
+                // Param A = Скорость расшифровки
+                const speed = 1 + Math.floor(state.params.a * 5); 
+                
+                spans.forEach(span => {
+                    if (span.classList.contains('done')) return;
+
+                    // Шанс изменения символа
+                    if (Math.random() > 0.5) {
+                        span.innerText = randomChar();
+                        span.dataset.cycles = parseInt(span.dataset.cycles) + 1;
+                    }
+
+                    // Условие остановки (чем больше индекс, тем позже останавливается)
+                    // Param B влияет на длину "хвоста" расшифровки
+                    const threshold = 10 + (spans.indexOf(span) * (5 + state.params.b * 20));
+                    
+                    if (parseInt(span.dataset.cycles) > threshold) {
+                        span.innerText = span.dataset.target;
+                        span.className = 'char-span done';
+                    }
+                });
+
+                // Если все расшифрованы, перезапуск через время (для лупа)
+                if (spans.every(s => s.classList.contains('done'))) {
+                    if (Math.random() < 0.01) initDecoder(); // 1% шанс рестарта каждый кадр после завершения
+                }
+
+                animationId = requestAnimationFrame(loop);
+            }
+            loop();
+        }
+        function randomChar() {
+            const dict = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_!<>[]";
+            return dict[Math.floor(Math.random() * dict.length)];
+        }
+
+
+        // === MODE B: KINETIC STACK ===
+        function initStack() {
+            const container = document.createElement('div');
+            container.className = 'stack-container';
+            
+            // Создаем копии
+            const layers = 7;
+            const els = [];
+            
+            for(let i=0; i<layers; i++) {
+                const d = document.createElement('div');
+                d.className = 'stack-layer';
+                d.innerText = state.text;
+                if (i === Math.floor(layers/2)) d.classList.add('main');
+                container.appendChild(d);
+                els.push(d);
+            }
+            viewport.appendChild(container);
+
+            let time = 0;
+            function loop() {
+                // Param A = Скорость волны
+                time += 0.02 + (state.params.a * 0.1);
+                
+                // Param B = Амплитуда сдвига (X)
+                const ampX = state.params.b * 100;
+                
+                // Param C = Высота волны (Y)
+                const ampY = state.params.c * 50;
+
+                els.forEach((el, i) => {
+                    // Смещение от центра
+                    const offset = i - Math.floor(layers/2);
+                    
+                    // Сложная формула движения
+                    const x = Math.sin(time + offset * 0.5) * (ampX * Math.abs(offset) * 0.5);
+                    const skew = Math.cos(time + offset * 0.5) * (offset * 5);
+                    
+                    el.style.transform = `translateX(${x}px) skewX(${skew}deg)`;
+                    
+                    // Цвет меняется циклически
+                    if (!el.classList.contains('main')) {
+                        el.style.opacity = 1 - (Math.abs(offset) * 0.2);
+                    }
+                });
+                animationId = requestAnimationFrame(loop);
+            }
+            loop();
+        }
+
+
+        // === MODE C: FLOAT (Physics) ===
+        function initFloat() {
+            const container = document.createElement('div');
+            container.className = 'float-container';
+            
+            const chars = state.text.split('');
+            const particles = [];
+
+            chars.forEach((char, i) => {
+                if (char === ' ') return;
+                const el = document.createElement('div');
+                el.className = 'float-char';
+                el.innerText = char;
+                
+                // Случайная позиция
+                let x = Math.random() * (window.innerWidth - 50);
+                let y = Math.random() * (window.innerHeight - 50);
+                
+                el.style.left = x + 'px';
+                el.style.top = y + 'px';
+                
+                container.appendChild(el);
+                
+                particles.push({
+                    el: el,
+                    x: x, y: y,
+                    vx: (Math.random()-0.5) * 2,
+                    vy: (Math.random()-0.5) * 2,
+                    rot: Math.random() * 360
+                });
+            });
+            viewport.appendChild(container);
+
+            function loop() {
+                // Param A = Скорость
+                const speedMult = state.params.a * 2;
+                // Param C = Вращение
+                const rotSpeed = state.params.c * 5;
+
+                particles.forEach(p => {
+                    p.x += p.vx * speedMult;
+                    p.y += p.vy * speedMult;
+                    p.rot += rotSpeed;
+
+                    // Отталкивание от стен
+                    if (p.x < 0 || p.x > window.innerWidth - 50) p.vx *= -1;
+                    if (p.y < 0 || p.y > window.innerHeight - 50) p.vy *= -1;
+
+                    p.el.style.transform = `translate(${p.x}px, ${p.y}px) rotate(${p.rot}deg)`;
+                    p.el.style.color = `hsl(${state.hue}, 100%, 50%)`;
+                    
+                    // Param B = Размер (динамически)
+                    p.el.style.fontSize = (4 + state.params.b * 4) + 'vw';
+                });
+                animationId = requestAnimationFrame(loop);
+            }
+            loop();
+        }
+
+        // Init Standalone
+        if (window.self === window.top) initMode();
 
     </script>
 </body>

@@ -2,104 +2,292 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CSS Filters & Transforms Showcase</title>
+    <title>CSS Filter Visualizer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
     <style>
-        body, html {
-            margin: 0;
-            padding: 0;
+        :root {
+            --hue: 180;
+            --val-a: 0.5; /* Speed / Frequency */
+            --val-b: 0.5; /* Intensity / Size */
+            --val-c: 0.1; /* Chaos / Distortion */
+            
+            --primary: hsl(var(--hue), 100%, 50%);
+            --bg: #050505;
+        }
+
+        body {
+            margin: 0; overflow: hidden;
+            background: transparent;
+            font-family: 'Rajdhani', sans-serif;
+            color: white;
+            height: 100vh;
+            display: flex; flex-direction: column;
+        }
+
+        /* --- VIEWPORT (Экран просмотра) --- */
+        .viewport {
+            flex: 1;
+            display: flex; justify-content: center; align-items: center;
+            position: relative;
             overflow: hidden;
-            background-color: #000;
+        }
+
+        /* Текст внутри экрана */
+        .hero-text {
+            font-size: 12vw; /* Адаптивный огромный размер */
+            font-weight: 900;
+            text-transform: uppercase;
+            white-space: nowrap;
+            position: relative;
+            transition: all 0.3s ease;
+            cursor: default;
+            user-select: none;
+        }
+
+        /* --- SELECTOR BAR (Нижняя панель) --- */
+        .selector-bar {
+            height: 60px;
             display: flex;
             justify-content: center;
-            align-items: center;
-            height: 100vh;
-            font-family: monospace;
-            color: #00FFFF;
+            gap: 5px;
+            padding: 10px;
+            background: rgba(0,0,0,0.8);
+            border-top: 1px solid var(--primary);
+            backdrop-filter: blur(5px);
         }
 
-        .container {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-            width: 90%;
+        .mode-btn {
+            background: transparent;
+            border: 1px solid #333;
+            color: #555;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 12px;
+            padding: 0 15px;
+            cursor: pointer;
+            transition: all 0.2s;
+            clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
         }
 
-        .box {
-            background-color: #111;
-            border: 1px solid #00FFFF;
-            border-radius: 5px;
-            padding: 20px;
-            text-align: center;
-            font-size: 1.2rem;
+        .mode-btn:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .mode-btn.active {
+            background: var(--primary);
+            color: #000;
+            border-color: var(--primary);
             font-weight: bold;
-            color: #FFFF00;
-            
-            /* Плавный переход для всех свойств */
-            transition: all 0.5s ease-in-out;
-        }
-        
-        .box-title {
-            font-size: 0.9rem;
-            color: #00FFFF;
-            text-transform: uppercase;
-            margin-bottom: 15px;
-            font-weight: normal;
+            box-shadow: 0 0 15px var(--primary);
         }
 
-        /* 1. Filter: blur() (Размытие) */
-        .box-blur:hover {
-            filter: blur(3px);
-            color: #FF00FF;
-            border-color: #FF00FF;
+        /* ================================
+           РЕЖИМЫ (MODES)
+           ================================ */
+
+        /* 1. LIQUID (Жидкий металл) */
+        /* A: Speed, B: Blur Amount */
+        .mode-liquid .hero-text {
+            color: #FFF;
+            /* Комбинация blur и contrast создает эффект "слипания" (gooey) */
+            filter: blur(calc(var(--val-b) * 15px + 2px)) contrast(calc(var(--val-b) * 10 + 10));
+            animation: liquidPulse calc(3s / (var(--val-a) + 0.2)) infinite ease-in-out;
+        }
+        .mode-liquid .hero-text::before {
+            content: attr(data-text); position: absolute; top:0; left:0;
+            color: var(--primary); transform: translate(5px, 5px); opacity: 0.5;
+            filter: blur(10px);
+        }
+        @keyframes liquidPulse {
+            0%, 100% { letter-spacing: normal; }
+            50% { letter-spacing: -10px; }
         }
 
-        /* 2. Filter: hue-rotate() (Смена цвета) */
-        .box-hue:hover {
-            /* 180deg = инвертирует цвет */
-            filter: hue-rotate(180deg); 
+
+        /* 2. RGB SHIFT (Хроматическая аберрация) */
+        /* A: Shake Speed, B: Shift Distance, C: Opacity/Noise */
+        .mode-rgb .hero-text {
+            color: white;
+            text-shadow: 
+                calc(var(--val-b) * -10px) 0 #FF0000, 
+                calc(var(--val-b) * 10px) 0 #0000FF;
+            animation: rgbShake calc(0.2s / (var(--val-a) + 0.1)) infinite;
+        }
+        @keyframes rgbShake {
+            0% { transform: translate(0, 0); }
+            25% { transform: translate(calc(var(--val-c) * 5px), calc(var(--val-c) * 5px)); }
+            50% { transform: translate(calc(var(--val-c) * -5px), 0); }
+            75% { transform: translate(0, calc(var(--val-c) * -5px)); }
+            100% { transform: translate(0, 0); }
         }
 
-        /* 3. Transform: skew() (Наклон) */
-        .box-skew:hover {
-            transform: skew(-15deg, 5deg);
-            color: #00FF00;
-            border-color: #00FF00;
+
+        /* 3. NEON HOLLOW (Неоновая обводка) */
+        /* A: Flicker Speed, B: Stroke Width, C: Glow Size */
+        .mode-neon .hero-text {
+            color: transparent;
+            -webkit-text-stroke: calc(var(--val-b) * 3px + 1px) var(--primary);
+            filter: drop-shadow(0 0 calc(var(--val-c) * 20px) var(--primary));
+            animation: neonFlicker calc(1s / (var(--val-a) + 0.1)) infinite;
         }
-        
-        /* 4. Transform: scale() (Масштаб) */
-        .box-scale:hover {
-            transform: scale(1.2);
-            text-shadow: 0 0 10px #FFFF00;
+        @keyframes neonFlicker {
+            0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% { opacity: 1; }
+            20%, 24%, 55% { opacity: 0.3; }
+        }
+
+
+        /* 4. CYBER GLITCH (Разрезанный текст) */
+        /* A: Cycle Speed, B: Cut Size, C: Trigger Chance */
+        .mode-glitch .hero-text {
+            position: relative;
+            color: #FFF;
+        }
+        .mode-glitch .hero-text::before,
+        .mode-glitch .hero-text::after {
+            content: attr(data-text);
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; /* Фейковый фон для перекрытия */
+        }
+        .mode-glitch .hero-text::before {
+            left: 2px; text-shadow: -1px 0 #ff00c1;
+            clip-path: inset(0 0 60% 0);
+            animation: glitchTop calc(2s / (var(--val-a) + 0.5)) infinite linear alternate-reverse;
+        }
+        .mode-glitch .hero-text::after {
+            left: -2px; text-shadow: -1px 0 #00fff9;
+            clip-path: inset(40% 0 0 0);
+            animation: glitchBot calc(1.5s / (var(--val-a) + 0.5)) infinite linear alternate-reverse;
+        }
+        @keyframes glitchTop {
+            0% { clip-path: inset(10% 0 80% 0); transform: translate(-5px,0); }
+            20% { clip-path: inset(80% 0 5% 0); transform: translate(5px,0); }
+            100% { clip-path: inset(40% 0 40% 0); transform: translate(-2px,0); }
+        }
+        @keyframes glitchBot {
+            0% { clip-path: inset(70% 0 20% 0); transform: translate(5px,0); }
+            100% { clip-path: inset(10% 0 60% 0); transform: translate(-5px,0); }
+        }
+
+
+        /* 5. VAPORWAVE (Ретро градиент и наклон) */
+        /* A: Skew Speed, B: Gradient Shift, C: Reflection Opacity */
+        .mode-vapor .hero-text {
+            background: linear-gradient(to bottom, #00FFFF, #FF00FF);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            transform: skew(calc(var(--val-a) * -30deg));
+            position: relative;
+        }
+        /* Отражение */
+        .mode-vapor .hero-text::after {
+            content: attr(data-text);
+            position: absolute;
+            left: 0; top: 80%;
+            transform: scaleY(-0.6) skew(calc(var(--val-a) * 30deg));
+            opacity: calc(var(--val-c) * 0.5);
+            background: linear-gradient(to top, rgba(255,0,255,0.8), transparent);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: blur(2px);
+        }
+
+
+        /* 6. HAZARD (Полосы) */
+        /* A: Speed, B: Angle, C: Stripe Width */
+        .mode-hazard .hero-text {
+            color: transparent;
+            background-image: repeating-linear-gradient(
+                45deg,
+                #000,
+                #000 10px,
+                var(--primary) 10px,
+                var(--primary) calc(var(--val-c) * 20px + 10px)
+            );
+            -webkit-background-clip: text;
+            background-size: 200% 200%;
+            animation: hazardFlow calc(5s / (var(--val-a) + 0.1)) linear infinite;
+        }
+        @keyframes hazardFlow {
+            0% { background-position: 0% 50%; }
+            100% { background-position: 100% 50%; }
+        }
+
+        /* Scanlines overlay */
+        .scanlines {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%);
+            background-size: 100% 4px;
+            pointer-events: none; z-index: 10;
         }
 
     </style>
 </head>
 <body>
     
-    <div class="container">
-        
-        <div class="box box-blur">
-            <div class="box-title">filter: blur()</div>
-            HOVER ME
-        </div>
-        
-        <div class="box box-hue">
-            <div class="box-title">filter: hue-rotate()</div>
-            HOVER ME
-        </div>
-        
-        <div class="box box-skew">
-            <div class="box-title">transform: skew()</div>
-            HOVER ME
-        </div>
+    <div class="scanlines"></div>
 
-        <div class="box box-scale">
-            <div class="box-title">transform: scale()</div>
-            HOVER ME
+    <div class="viewport" id="viewport">
+        <div class="wrapper mode-liquid" id="effect-wrapper">
+            <div class="hero-text" id="output" data-text="SYSTEM">SYSTEM</div>
         </div>
-
     </div>
 
+    <div class="selector-bar">
+        <button class="mode-btn active" onclick="setMode('mode-liquid', this)">LIQUID</button>
+        <button class="mode-btn" onclick="setMode('mode-rgb', this)">RGB_SHIFT</button>
+        <button class="mode-btn" onclick="setMode('mode-neon', this)">NEON</button>
+        <button class="mode-btn" onclick="setMode('mode-glitch', this)">GLITCH</button>
+        <button class="mode-btn" onclick="setMode('mode-vapor', this)">VAPOR</button>
+        <button class="mode-btn" onclick="setMode('mode-hazard', this)">HAZARD</button>
+    </div>
+
+    <script>
+        const textEl = document.getElementById('output');
+        const wrapperEl = document.getElementById('effect-wrapper');
+        const btns = document.querySelectorAll('.mode-btn');
+
+        // Функция переключения режима (вызывается по клику на кнопки внизу)
+        window.setMode = function(modeClass, btn) {
+            // Сброс классов
+            wrapperEl.className = 'wrapper ' + modeClass;
+            
+            // Обновляем UI кнопок
+            btns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        }
+
+        // Слушатель событий от Главного Окна (index.html)
+        window.addEventListener('message', (event) => {
+            if (event.data.type === 'UPDATE_STATE') {
+                const state = event.data;
+                updateVisuals(state);
+            }
+        });
+
+        function updateVisuals(state) {
+            const root = document.documentElement;
+            
+            // 1. Обновляем текст
+            textEl.textContent = state.text;
+            textEl.setAttribute('data-text', state.text); // Для глитч эффектов
+
+            // 2. Обновляем цвет
+            root.style.setProperty('--hue', state.hue);
+
+            // 3. Обновляем параметры физики
+            root.style.setProperty('--val-a', state.params.a); // 0.0 - 1.0
+            root.style.setProperty('--val-b', state.params.b);
+            root.style.setProperty('--val-c', state.params.c);
+        }
+
+        // Инициализация (если открыто отдельно)
+        if (window.self === window.top) {
+            updateVisuals({
+                text: "STANDALONE",
+                hue: 180,
+                params: { a: 0.5, b: 0.5, c: 0.1 }
+            });
+        }
+    </script>
 </body>
 </html>

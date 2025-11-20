@@ -2,116 +2,277 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale-1.0">
-    <title>SVG Text Showcase</title>
+    <title>SVG Vector Engine</title>
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
     <style>
-        body, html {
-            margin: 0;
-            padding: 0;
-            overflow: hidden;
-            background-color: #000;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            font-family: monospace;
-            color: #00FFFF;
+        :root {
+            --hue: 180;
+            --primary: hsl(var(--hue), 100%, 50%);
+            --bg: transparent;
         }
 
-        /* * SVG (Scalable Vector Graphics) - это графика, описанная кодом.
-         * Она не теряет качества при любом масштабировании.
-         */
+        body {
+            margin: 0; overflow: hidden;
+            background: var(--bg);
+            font-family: 'Rajdhani', sans-serif;
+            height: 100vh;
+            display: flex; flex-direction: column;
+            color: var(--primary);
+        }
+
+        /* --- VIEWPORT --- */
+        .viewport {
+            flex: 1;
+            position: relative;
+            display: flex; justify-content: center; align-items: center;
+            overflow: hidden;
+        }
 
         svg {
-            width: 90%;
-            height: 90%;
-            border: 1px solid #333;
-            border-radius: 5px;
+            width: 100%;
+            height: 100%;
+            /* Делаем SVG адаптивным */
+            max-height: 80vh; 
         }
 
-        /* Стили для текста внутри SVG */
-        .svg-text {
-            font-size: 2.5rem; /* rem в SVG работает отлично */
-            font-weight: bold;
-            text-transform: uppercase;
-            /* text-anchor="middle" (в HTML) центрирует текст по 'x' */
+        text {
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: 900;
+            text-anchor: middle;
+            dominant-baseline: middle;
+            transition: fill 0.3s, stroke 0.3s;
         }
 
-        /* 1. Эффект обводки (Outline) */
-        .text-outline {
-            fill: none; /* Убираем заливку */
-            stroke: #00FFFF;
-            stroke-width: 2px;
+        /* --- SELECTOR BAR --- */
+        .selector-bar {
+            height: 60px;
+            display: flex; justify-content: center; gap: 5px; padding: 10px;
+            background: rgba(0,0,0,0.8);
+            border-top: 1px solid var(--primary);
+            backdrop-filter: blur(5px);
+            z-index: 10;
         }
+        .mode-btn {
+            background: transparent; border: 1px solid #333; color: #555;
+            font-family: 'Share Tech Mono', monospace; font-size: 12px; padding: 0 15px;
+            cursor: pointer; transition: all 0.2s;
+            clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+        }
+        .mode-btn:hover { border-color: var(--primary); color: var(--primary); }
+        .mode-btn.active { background: var(--primary); color: #000; font-weight: bold; box-shadow: 0 0 15px var(--primary); }
 
-        /* 2. Эффект текста по пути (Path) */
-        #text-path {
-            fill: #FFFF00;
-        }
+
+        /* --- MODE SPECIFIC STYLES --- */
         
-        /* Сам путь (path) делаем видимым, но полупрозрачным */
-        #curve {
+        /* NEON WIRE Styles */
+        .neon-text {
             fill: none;
-            stroke: #555;
-            stroke-width: 1px;
-            stroke-dasharray: 5 5; /* Делает линию пунктирной */
+            stroke: var(--primary);
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+        .neon-glow {
+            fill: none;
+            stroke: var(--primary);
+            opacity: 0.3;
+            filter: blur(10px);
         }
 
-        /* 3. Эффект рисования (Drawing Animation) */
-        .text-draw {
+        /* ELASTIC Styles */
+        .elastic-path {
             fill: none;
-            stroke: #00FF00;
-            stroke-width: 2px;
-            /* * stroke-dasharray = длина штриха. 
-             * Мы делаем штрих очень длинным (500), чтобы он покрыл весь текст.
-             */
-            stroke-dasharray: 500;
-            /* * stroke-dashoffset = сдвиг штриха.
-             * Сдвигаем его на всю длину, "пряча" нарисованное.
-             */
-            stroke-dashoffset: 500;
-            /* Анимация будет сдвигать 'offset' обратно в 0 */
-            animation: draw 5s linear infinite;
+            stroke: rgba(255,255,255,0.1);
+            stroke-width: 1;
+            stroke-dasharray: 5 5;
+        }
+        .elastic-text {
+            fill: var(--primary);
         }
 
-        @keyframes draw {
-            to {
-                /* Возвращаем сдвиг в 0, "проявляя" текст */
-                stroke-dashoffset: 0;
-            }
+        /* GLITCH Styles */
+        .glitch-text {
+            fill: #FFF;
+            filter: url(#displacementFilter);
         }
 
     </style>
 </head>
 <body>
-    
-    <svg viewBox="0 0 500 300"> <!-- viewBox="[x_min] [y_min] [ширина] [высота]" -->
-        
-        <!-- 1. Текст с обводкой (Outline) -->
-        <text class="svg-text text-outline" x="50%" y="30%" text-anchor="middle">
-            SVG OUTLINE
-        </text>
 
-        <!-- 2. Текст по пути (Path) -->
-        <!-- Сначала определяем путь в <defs> (definitions) -->
-        <defs>
-            <!-- M = MoveTo, Q = Quadratic Bezier curve -->
-            <path id="curve" d="M 50 150 Q 250 100 450 150"></path>
-        </defs>
-        <!-- Теперь используем этот путь -->
-        <text class="svg-text" id="text-path">
-            <!-- textPath "привязывает" текст к пути с id="curve" -->
-            <textPath href="#curve">
-                Text... on a vector path...
-            </textPath>
-        </text>
+    <div class="viewport">
+        <svg viewBox="0 0 800 400" id="main-svg">
+            <defs>
+                <filter id="displacementFilter">
+                    <feTurbulence type="turbulence" baseFrequency="0.05" numOctaves="2" result="turbulence" />
+                    <feDisplacementMap in2="turbulence" in="SourceGraphic" scale="30" xChannelSelector="R" yChannelSelector="G" />
+                </filter>
+                
+                <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" style="stop-color:var(--primary);stop-opacity:1" />
+                    <stop offset="100%" style="stop-color:#FFF;stop-opacity:1" />
+                </linearGradient>
+            </defs>
 
-        <!-- 3. Анимация рисования (Animation) -->
-        <text class="svg-text text-draw" x="50%" y="80%" text-anchor="middle">
-            SELF-DRAWING
-        </text>
+            <g id="grp-neon" style="display:none">
+                <text x="400" y="200" class="neon-glow" font-size="120">SVG</text>
+                <text x="400" y="200" class="neon-text" font-size="120">SVG</text>
+            </g>
 
-    </svg>
+            <g id="grp-elastic" style="display:none">
+                <path id="textCurve" d="M 50 200 Q 400 200 750 200" class="elastic-path" />
+                <text font-size="80" class="elastic-text">
+                    <textPath href="#textCurve" startOffset="50%" text-anchor="middle" id="elastic-text-path">
+                        SVG VECTOR
+                    </textPath>
+                </text>
+            </g>
 
+            <g id="grp-glitch" style="display:none">
+                <text x="400" y="200" class="glitch-text" font-size="150">GLITCH</text>
+            </g>
+        </svg>
+    </div>
+
+    <div class="selector-bar">
+        <button class="mode-btn active" onclick="setMode('neon', this)">NEON_WIRE</button>
+        <button class="mode-btn" onclick="setMode('elastic', this)">ELASTIC</button>
+        <button class="mode-btn" onclick="setMode('glitch', this)">LIQUID_GLITCH</button>
+    </div>
+
+    <script>
+        // --- STATE ---
+        let currentMode = 'neon';
+        let state = {
+            text: "VECTOR",
+            params: { a: 0.5, b: 0.5, c: 0.1 },
+            hue: 180
+        };
+        let time = 0;
+
+        // --- REFS ---
+        const svg = document.getElementById('main-svg');
+        const groups = {
+            neon: document.getElementById('grp-neon'),
+            elastic: document.getElementById('grp-elastic'),
+            glitch: document.getElementById('grp-glitch')
+        };
+
+        // --- INIT ---
+        setMode('neon', document.querySelector('.mode-btn'));
+
+        // --- MESSAGE HANDLER ---
+        window.addEventListener('message', (e) => {
+            if (e.data.type === 'UPDATE_STATE') {
+                state = e.data;
+                updateGlobalStyles();
+                updateTextContent();
+            }
+        });
+
+        function updateGlobalStyles() {
+            document.documentElement.style.setProperty('--hue', state.hue);
+        }
+
+        function updateTextContent() {
+            // Обновляем текст во всех режимах
+            
+            // Neon
+            groups.neon.querySelectorAll('text').forEach(t => t.textContent = state.text);
+            
+            // Elastic (внутри textPath)
+            document.getElementById('elastic-text-path').textContent = state.text;
+            
+            // Glitch
+            groups.glitch.querySelector('text').textContent = state.text;
+        }
+
+        function setMode(mode, btn) {
+            currentMode = mode;
+            
+            // UI update
+            document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+            if(btn) btn.classList.add('active');
+
+            // Visibility update
+            Object.values(groups).forEach(g => g.style.display = 'none');
+            groups[mode].style.display = 'block';
+            
+            updateTextContent();
+        }
+
+
+        // --- ANIMATION LOOP ---
+        function animate() {
+            time += 0.01 + (state.params.a * 0.05); // Param A = Global Speed
+
+            // 1. LOGIC FOR NEON
+            if (currentMode === 'neon') {
+                const textEls = groups.neon.querySelectorAll('text');
+                
+                // Param B = Stroke Width (1..5)
+                const width = 1 + state.params.b * 4;
+                
+                // Param C = Dash Array (Разрыв линии)
+                // От 0 (сплошная) до 100 (пунктир)
+                const dash = state.params.c * 300; 
+                
+                textEls.forEach(el => {
+                    el.setAttribute('stroke-width', width);
+                    el.setAttribute('stroke-dasharray', `${dash} ${dash/2}`);
+                    // Анимируем сдвиг штриха
+                    el.setAttribute('stroke-dashoffset', time * -100);
+                });
+            }
+
+            // 2. LOGIC FOR ELASTIC
+            if (currentMode === 'elastic') {
+                const path = document.getElementById('textCurve');
+                
+                // Param B = Амплитуда изгиба
+                const amp = state.params.b * 150;
+                
+                // Param C = Частота волны (Chaos)
+                const freq = 1 + state.params.c * 5;
+
+                // Двигаем контрольную точку кривой Безье (Q)
+                // M 50 200 Q [ControlX] [ControlY] 750 200
+                const cy = 200 + Math.sin(time * freq) * amp;
+                const cx = 400 + Math.cos(time * freq * 0.5) * (amp * 0.5);
+
+                path.setAttribute('d', `M 50 200 Q ${cx} ${cy} 750 200`);
+                
+                // Растягиваем текст по длине (spacing)
+                // document.getElementById('elastic-text-path').setAttribute('letter-spacing', state.params.c * 20);
+            }
+
+            // 3. LOGIC FOR GLITCH (FILTER)
+            if (currentMode === 'glitch') {
+                const turbulence = document.querySelector('#displacementFilter feTurbulence');
+                const displacement = document.querySelector('#displacementFilter feDisplacementMap');
+                
+                // Param B = Сила искажения (Scale)
+                const scale = state.params.b * 100;
+                displacement.setAttribute('scale', scale);
+                
+                // Param C = "Зернистость" (Base Frequency)
+                // baseFrequency="0.01" (плавно) -> "0.5" (шум)
+                const freq = 0.01 + (state.params.c * 0.2);
+                
+                // Анимируем seed или frequency для движения воды
+                // turbulence.setAttribute('baseFrequency', `${freq} ${freq}`); // Шум меняется
+                // Лучше менять seed, но в SMIL/JS для плавности меняем атрибут baseFrequency чуть-чуть
+                
+                // Плавное течение: меняем y-компоненту частоты
+                turbulence.setAttribute('baseFrequency', `${freq} ${0.02 + Math.sin(time)*0.01}`);
+            }
+
+            requestAnimationFrame(animate);
+        }
+
+        // Запуск
+        if (window.self === window.top) updateTextContent(); // Standalone check
+        animate();
+
+    </script>
 </body>
 </html>

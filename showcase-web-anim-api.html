@@ -2,129 +2,257 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web Animations API Showcase</title>
+    <title>Web Animations API Sequencer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
     <style>
-        body, html {
-            margin: 0;
-            padding: 20px;
-            box-sizing: border-box;
+        :root {
+            --hue: 180;
+            --primary: hsl(var(--hue), 100%, 50%);
+            --bg: transparent;
+        }
+
+        body {
+            margin: 0; overflow: hidden;
+            background: var(--bg);
+            font-family: 'Rajdhani', sans-serif;
+            height: 100vh;
+            display: flex; flex-direction: column;
+            color: var(--primary);
+        }
+
+        /* --- VIEWPORT --- */
+        .viewport {
+            flex: 1;
+            position: relative;
+            display: flex; justify-content: center; align-items: center;
             overflow: hidden;
-            background-color: #000;
-            font-family: monospace;
-            color: #00FFFF;
+            perspective: 1000px;
         }
 
-        .container {
+        .char-wrapper {
             display: flex;
-            flex-direction: column;
-            gap: 25px; /* Больше отступ между дорожками */
-            padding-top: 20px;
+            font-size: 8vw;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
         }
 
-        .track {
-            /* Дорожка, по которой бежит шарик */
-            width: 90%;
-            border-bottom: 1px dashed #333;
-            height: 20px;
+        .char {
+            display: inline-block;
+            transform-origin: center bottom;
+            will-change: transform, opacity, filter;
+            white-space: pre;
         }
 
-        .label {
-            color: #00FFFF;
-            font-size: 0.9rem;
-            margin-bottom: 5px;
+        /* --- SELECTOR BAR --- */
+        .selector-bar {
+            height: 60px;
+            display: flex; justify-content: center; gap: 5px; padding: 10px;
+            background: rgba(0,0,0,0.8);
+            border-top: 1px solid var(--primary);
+            backdrop-filter: blur(5px);
+            z-index: 10;
         }
-
-        .ball {
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            background-color: #FF00FF; /* Magenta */
-            box-shadow: 0 0 10px #FF00FF;
-            /* Позволяет .animate() работать с transform */
-            will-change: transform; 
+        .mode-btn {
+            background: transparent; border: 1px solid #333; color: #555;
+            font-family: 'Share Tech Mono', monospace; font-size: 12px; padding: 0 15px;
+            cursor: pointer; transition: all 0.2s;
+            clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
         }
+        .mode-btn:hover { border-color: var(--primary); color: var(--primary); }
+        .mode-btn.active { background: var(--primary); color: #000; font-weight: bold; box-shadow: 0 0 15px var(--primary); }
 
     </style>
 </head>
 <body>
-    
-    <div class="container">
 
-        <!-- Дорожка 1: Linear (Линейная) -->
-        <div class="label">easing: 'linear' (постоянная скорость)</div>
-        <div class="track">
-            <div class="ball" id="ball1"></div>
-        </div>
+    <div class="viewport" id="viewport">
+        <div class="char-wrapper" id="char-container">
+            </div>
+    </div>
 
-        <!-- Дорожка 2: Ease-in-out (Плавный старт/финиш) -->
-        <div class="label">easing: 'ease-in-out' (плавный старт/финиш)</div>
-        <div class="track">
-            <div class="ball" id="ball2" style="background-color: #FFFF00; box-shadow: 0 0 10px #FFFF00;"></div>
-        </div>
-
-        <!-- Дорожка 3: Bouncy (Пружинистая) -->
-        <div class="label">easing: 'cubic-bezier(0.68, -0.55, 0.27, 1.55)' (с отскоком)</div>
-        <div class="track">
-            <div class="ball" id="ball3" style="background-color: #00FF00; box-shadow: 0 0 10px #00FF00;"></div>
-        </div>
-
-        <!-- Дорожка 4: Steps (Пошаговая) -->
-        <div class="label">easing: 'steps(5, end)' (5 шагов)</div>
-        <div class="track">
-            <div class="ball" id="ball4" style="background-color: #FFFFFF; box-shadow: 0 0 10px #FFFFFF;"></div>
-        </div>
-
+    <div class="selector-bar">
+        <button class="mode-btn active" onclick="setMode('elastic', this)">ELASTIC_SNAP</button>
+        <button class="mode-btn" onclick="setMode('stagger', this)">STAGGER_WAVE</button>
+        <button class="mode-btn" onclick="setMode('warp', this)">TIME_WARP</button>
     </div>
 
     <script>
-        // Это и есть Web Animations API.
-        // Мы не используем CSS @keyframes.
-
-        // 1. Находим элементы
-        const ball1 = document.getElementById('ball1');
-        const ball2 = document.getElementById('ball2');
-        const ball3 = document.getElementById('ball3');
-        const ball4 = document.getElementById('ball4');
-
-        // 2. Определяем ключевые кадры (keyframes) в виде массива JS
-        const keyframes = [
-            { transform: 'translateX(0px)' },
-            { transform: 'translateX(300px)' } // Двигаемся на 300px вправо
-        ];
-
-        // 3. Определяем общие настройки времени (timing) в виде объекта JS
-        const timing = {
-            duration: 3000,         // 3 секунды
-            iterations: Infinity,   // Бесконечно
-            direction: 'alternate'  // Туда-обратно
+        const container = document.getElementById('char-container');
+        let currentMode = 'elastic';
+        let animations = []; // Храним ссылки на активные анимации для управления ими
+        
+        let state = {
+            text: "WAAPI_SEQ",
+            params: { a: 0.5, b: 0.5, c: 0.1 },
+            hue: 180
         };
 
-        // 4. Запускаем анимации с разными 'easing'
-        
-        // Линейная
-        ball1.animate(keyframes, {
-            ...timing, // Копируем общие настройки
-            easing: 'linear'
+        // --- INIT ---
+        initMode();
+
+        // --- BRIDGE ---
+        window.addEventListener('message', (e) => {
+            if (e.data.type === 'UPDATE_STATE') {
+                const oldText = state.text;
+                state = e.data;
+                document.documentElement.style.setProperty('--hue', state.hue);
+
+                // Если текст изменился - полная перестройка
+                if (oldText !== state.text) {
+                    initMode();
+                } else {
+                    // Если изменились только параметры - обновляем живые анимации
+                    updateLiveAnimations();
+                }
+            }
         });
 
-        // Плавно
-        ball2.animate(keyframes, {
-            ...timing,
-            easing: 'ease-in-out'
-        });
+        window.setMode = function(mode, btn) {
+            document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentMode = mode;
+            initMode();
+        }
 
-        // С отскоком (как пружина)
-        ball3.animate(keyframes, {
-            ...timing,
-            easing: 'cubic-bezier(0.68, -0.55, 0.27, 1.55)'
-        });
+        function createChars() {
+            container.innerHTML = '';
+            animations.forEach(a => a.cancel()); // Очистка старых анимаций
+            animations = [];
+            
+            const chars = state.text.split('');
+            return chars.map((char, i) => {
+                const span = document.createElement('span');
+                span.className = 'char';
+                span.textContent = char;
+                container.appendChild(span);
+                return span;
+            });
+        }
 
-        // Пошаговая
-        ball4.animate(keyframes, {
-            ...timing,
-            easing: 'steps(5, end)' // 5 "прыжков"
-        });
+        function initMode() {
+            const els = createChars();
+            
+            if (currentMode === 'elastic') runElastic(els);
+            else if (currentMode === 'stagger') runStagger(els);
+            else if (currentMode === 'warp') runWarp(els);
+        }
+
+        function updateLiveAnimations() {
+            // В режиме WARP мы меняем playbackRate на лету
+            if (currentMode === 'warp') {
+                // Param A (0..1) -> Rate (-2..2)
+                const rate = (state.params.a - 0.5) * 4; 
+                animations.forEach(anim => {
+                    anim.playbackRate = rate;
+                });
+            } 
+            // В других режимах проще перезапустить для применения новых параметров
+            else {
+                initMode();
+            }
+        }
+
+
+        // ==========================================
+        // MODE 1: ELASTIC SNAP (Physics Keyframes)
+        // ==========================================
+        function runElastic(els) {
+            // Param A: Скорость
+            const duration = 2000 - (state.params.a * 1500); // 500ms - 2000ms
+            
+            // Param C: Сила отскока (генерируем разные кифреймы)
+            const bounce = state.params.c; 
+            
+            // Генерируем массив трансформаций (Scale)
+            // WAAPI позволяет передавать массив offset-ов
+            const keyframes = [
+                { transform: 'scale(0)', offset: 0 },
+                { transform: `scale(${1 + bounce})`, offset: 0.4 },
+                { transform: `scale(${1 - bounce * 0.5})`, offset: 0.6 },
+                { transform: `scale(${1 + bounce * 0.2})`, offset: 0.8 },
+                { transform: 'scale(1)', offset: 1 }
+            ];
+
+            els.forEach((el, i) => {
+                // Param B: Задержка между буквами
+                const delay = i * (state.params.b * 200);
+
+                const anim = el.animate(keyframes, {
+                    duration: duration,
+                    delay: delay,
+                    easing: 'linear', // Эффект пружины зашит в кифреймы
+                    fill: 'both',
+                    iterations: Infinity,
+                    direction: 'alternate' // Туда-сюда
+                });
+                animations.push(anim);
+            });
+        }
+
+
+        // ==========================================
+        // MODE 2: STAGGER WAVE (Complex Property Mix)
+        // ==========================================
+        function runStagger(els) {
+            const duration = 1000 + (state.params.a * 1000);
+            
+            // Param C: Смещение по Y
+            const yOffset = 20 + (state.params.c * 100);
+
+            const keyframes = [
+                { transform: `translateY(${yOffset}px)`, opacity: 0.2, filter: 'blur(10px)' },
+                { transform: `translateY(-${yOffset}px)`, opacity: 1, filter: 'blur(0px)' },
+                { transform: `translateY(${yOffset}px)`, opacity: 0.2, filter: 'blur(10px)' }
+            ];
+
+            els.forEach((el, i) => {
+                // Param B: Плотность волны (Stagger)
+                // Вычисляем задержку так, чтобы создать "змейку"
+                const delay = i * (state.params.b * 300);
+                
+                const anim = el.animate(keyframes, {
+                    duration: duration,
+                    delay: delay,
+                    easing: 'ease-in-out',
+                    iterations: Infinity
+                });
+                animations.push(anim);
+            });
+        }
+
+
+        // ==========================================
+        // MODE 3: TIME WARP (Playback Rate Control)
+        // ==========================================
+        function runWarp(els) {
+            // Создаем сложную 3D анимацию вращения
+            const keyframes = [
+                { transform: 'rotateX(0deg) rotateY(0deg)', color: 'var(--primary)' },
+                { transform: 'rotateX(180deg) rotateY(90deg)', color: '#FFF', offset: 0.5 },
+                { transform: 'rotateX(360deg) rotateY(0deg)', color: 'var(--primary)' }
+            ];
+
+            // Исходная скорость
+            const baseRate = (state.params.a - 0.5) * 4; 
+
+            els.forEach((el, i) => {
+                // Param C: Рассинхрон (Offset)
+                const delay = i * (state.params.c * -500); // Отрицательная задержка = старт с середины
+
+                const anim = el.animate(keyframes, {
+                    duration: 3000, // Базовая длительность
+                    delay: delay,
+                    iterations: Infinity,
+                    easing: 'linear'
+                });
+                
+                // Сразу применяем скорость из слайдера
+                anim.playbackRate = baseRate;
+                
+                animations.push(anim);
+            });
+        }
 
     </script>
 </body>

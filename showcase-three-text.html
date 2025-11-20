@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Three.js Text</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: transparent; }
+        canvas { display: block; outline: none; }
+    </style>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+</head>
+<body>
+    <script type="module">
+        import * as THREE from 'three';
+        import { FontLoader } from 'three/addons/loaders/FontLoader.js';
+        import { TextGeometry } from 'three/addons/geometries/TextGeometry.js';
+
+        let scene, camera, renderer;
+        let textMesh, materials;
+        let loadedFont = null;
+        
+        let state = {
+            text: "3D_CORE",
+            params: { a: 0.5, b: 0.5, c: 0.5 }, // A: Rot Speed, B: Depth, C: Color
+            color: 0
+        };
+
+        init();
+        animate();
+
+        function init() {
+            scene = new THREE.Scene();
+            // scene.background = new THREE.Color(0x000000); // Оставляем прозрачным для наложения
+
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 10000);
+            camera.position.set(0, 0, 600);
+
+            // Свет
+            const dirLight = new THREE.DirectionalLight(0xffffff, 4);
+            dirLight.position.set(0, 0, 1).normalize();
+            scene.add(dirLight);
+            
+            const pointLight = new THREE.PointLight(0x00ffff, 2, 800);
+            pointLight.position.set(0, 0, 100);
+            scene.add(pointLight);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.body.appendChild(renderer.domElement);
+
+            loadFont(); // Загружаем шрифт и создаем текст
+            
+            window.addEventListener('resize', onWindowResize);
+            window.addEventListener('message', onMessage);
+        }
+
+        function loadFont() {
+            const loader = new FontLoader();
+            // Используем стандартный шрифт helvetiker
+            loader.load('https://unpkg.com/three@0.160.0/examples/fonts/helvetiker_bold.typeface.json', function (font) {
+                loadedFont = font;
+                refreshText();
+            });
+        }
+
+        function refreshText() {
+            if (!loadedFont) return;
+            
+            if (textMesh) {
+                scene.remove(textMesh);
+                textMesh.geometry.dispose();
+            }
+
+            // Param B = Толщина (Depth)
+            const depth = 10 + (state.params.b * 100);
+            
+            const geometry = new TextGeometry(state.text, {
+                font: loadedFont,
+                size: 80,
+                height: depth,
+                curveSegments: 4,
+                bevelEnabled: true,
+                bevelThickness: 2,
+                bevelSize: 1.5,
+                bevelOffset: 0,
+                bevelSegments: 3
+            });
+
+            geometry.computeBoundingBox();
+            const xMid = - 0.5 * (geometry.boundingBox.max.x - geometry.boundingBox.min.x);
+            geometry.translate(xMid, 0, 0);
+
+            // Цвет материала (Wireframe стиль)
+            const matColor = new THREE.Color().setHSL(state.params.c, 1.0, 0.5);
+            
+            // Два материала: тело и грань
+            materials = [
+                new THREE.MeshPhongMaterial({ color: matColor, flatShading: true }), // front
+                new THREE.MeshPhongMaterial({ color: 0x111111, wireframe: true }) // side
+            ];
+
+            textMesh = new THREE.Mesh(geometry, materials);
+            scene.add(textMesh);
+        }
+
+        function onMessage(e) {
+            if(e.data.type === 'UPDATE_STATE') {
+                // Проверяем, изменился ли текст или геометрия, чтобы не пересоздавать зря
+                const textChanged = state.text !== e.data.text;
+                const depthChanged = Math.abs(state.params.b - e.data.params.b) > 0.05;
+                const colorChanged = Math.abs(state.params.c - e.data.params.c) > 0.05;
+
+                state = e.data;
+
+                if (textChanged || depthChanged || colorChanged) {
+                    refreshText();
+                }
+            }
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            render();
+        }
+
+        function render() {
+            if (textMesh) {
+                // Param A = Скорость вращения
+                const speed = (state.params.a - 0.5) * 0.1;
+                textMesh.rotation.x += speed * 0.5;
+                textMesh.rotation.y += speed;
+            }
+            renderer.render(scene, camera);
+        }
+    </script>
+</body>
+</html>
