@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>p5.js Experiments</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/p5.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0; overflow: hidden;
+            background: transparent;
+            font-family: 'Rajdhani', sans-serif;
+            color: #00F0FF;
+            display: flex; flex-direction: column;
+            height: 100vh;
+        }
+
+        /* Canvas контейнер */
+        #canvas-container {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Нижняя панель режимов */
+        .selector-bar {
+            height: 50px;
+            display: flex; justify-content: center; gap: 5px; padding: 10px;
+            background: rgba(0,0,0,0.8);
+            border-top: 1px solid #00F0FF;
+            backdrop-filter: blur(5px);
+            z-index: 10;
+        }
+        .mode-btn {
+            background: transparent; border: 1px solid #333; color: #555;
+            font-family: 'Share Tech Mono', monospace; font-size: 12px; padding: 0 15px;
+            cursor: pointer; transition: all 0.2s;
+            clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+        }
+        .mode-btn:hover { border-color: #00F0FF; color: #00F0FF; }
+        .mode-btn.active { background: #00F0FF; color: #000; font-weight: bold; box-shadow: 0 0 15px #00F0FF; }
+    </style>
+</head>
+<body>
+
+    <div id="canvas-container"></div>
+
+    <div class="selector-bar">
+        <button class="mode-btn active" onclick="changeMode('SWARM', this)">SWARM</button>
+        <button class="mode-btn" onclick="changeMode('WEB', this)">LINE_WEB</button>
+        <button class="mode-btn" onclick="changeMode('FLUID', this)">FLUID</button>
+    </div>
+
+    <script>
+        // --- LAB STATE ---
+        let state = {
+            text: "P5.JS",
+            params: { a: 0.5, b: 0.5, c: 0.1 }, // A: Speed, B: Size/Radius, C: Chaos
+            hue: 180
+        };
+        
+        let currentMode = 'SWARM';
+        let particles = [];
+        let textPoints = [];
+        let font;
+
+        // --- BRIDGE ---
+        window.addEventListener('message', (e) => {
+            if (e.data.type === 'UPDATE_STATE') {
+                let oldText = state.text;
+                state = e.data;
+                
+                // Если текст изменился, пересчитываем точки
+                if(oldText !== state.text) {
+                    sampleText();
+                }
+            }
+        });
+
+        // UI Switcher
+        window.changeMode = function(mode, btn) {
+            document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentMode = mode;
+            initParticles(); // Перезапуск физики
+        }
+
+
+        // --- P5.JS LOGIC ---
+
+        function preload() {
+            // Используем стандартный шрифт, но лучше подключить .ttf файл локально для точности
+            // Здесь мы используем хак с созданием графики, если loadFont недоступен, 
+            // но для Particle Text лучше загрузить реальный шрифт.
+            // Используем шрифт из Google Fonts через CSS и p5.js textToPoints (требует opentype)
+            // Для простоты в демо: используем массив точек из p5.Font (нужен файл)
+            // !!! ВМЕСТО ФАЙЛА мы используем сканирование пикселей (Pixel Scan), так как это надежнее без внешних файлов.
+        }
+
+        function setup() {
+            let cnv = createCanvas(windowWidth, windowHeight);
+            cnv.parent('canvas-container');
+            colorMode(HSB, 360, 100, 100, 100);
+            textAlign(CENTER, CENTER);
+            
+            sampleText(); // Создаем карту точек текста
+        }
+
+        function draw() {
+            clear(); // Прозрачный фон
+
+            // Param A: Скорость симуляции
+            let timeStep = 0.5 + state.params.a * 2;
+            
+            if (currentMode === 'SWARM') drawSwarm(timeStep);
+            else if (currentMode === 'WEB') drawWeb(timeStep);
+            else if (currentMode === 'FLUID') drawFluid(timeStep);
+        }
+
+        function windowResized() {
+            resizeCanvas(windowWidth, windowHeight);
+            sampleText();
+        }
+
+        // --- TEXT SAMPLER (PIXEL SCANNING) ---
+        // Превращает текст в массив координат particles
+        function sampleText() {
+            particles = [];
+            
+            // 1. Рисуем текст на невидимом буфере
+            let gfx = createGraphics(width, height);
+            gfx.pixelDensity(1);
+            gfx.background(0);
+            gfx.fill(255);
+            gfx.textAlign(CENTER, CENTER);
+            gfx.textSize(min(width, height) * 0.25);
+            gfx.textStyle(BOLD);
+            gfx.textFont('Rajdhani');
+            gfx.text(state.text, width/2, height/2);
+            
+            // 2. Сканируем
+            gfx.loadPixels();
+            // Param B влияет на плотность точек (Resolution)
+            // Если B=0 -> шаг 10 (мало точек), B=1 -> шаг 4 (много точек)
+            let step = floor(map(state.params.b, 0, 1, 15, 4)); 
+            
+            for (let y = 0; y < height; y += step) {
+                for (let x = 0; x < width; x += step) {
+                    let index = (x + y * width) * 4;
+                    if (gfx.pixels[index] > 128) {
+                        particles.push(new Particle(x, y));
+                    }
+                }
+            }
+            gfx.remove();
+        }
+
+        // --- PARTICLE CLASS ---
+        class Particle {
+            constructor(x, y) {
+                this.targetX = x;
+                this.targetY = y;
+                this.x = random(width); // Старт в случайном месте
+                this.y = random(height);
+                this.vx = 0;
+                this.vy = 0;
+                
+                // Для Fluid режима
+                this.baseX = x;
+                this.baseY = y;
+            }
+        }
+        
+        function initParticles() {
+            // Сброс скоростей при смене режима
+            particles.forEach(p => { p.vx = 0; p.vy = 0; });
+        }
+
+
+        // ==========================================
+        // MODE 1: SWARM (Рой)
+        // ==========================================
+        function drawSwarm(speed) {
+            let chaos = state.params.c * 5; // Сила разброса
+
+            noStroke();
+            fill(state.hue, 80, 100);
+
+            for (let p of particles) {
+                // 1. Притяжение к цели (Home)
+                let dx = p.targetX - p.x;
+                let dy = p.targetY - p.y;
+                
+                p.vx += dx * 0.05 * speed;
+                p.vy += dy * 0.05 * speed;
+                
+                // 2. Отталкивание от мыши
+                let dMouse = dist(mouseX, mouseY, p.x, p.y);
+                if (dMouse < 100) {
+                    let force = map(dMouse, 0, 100, 20, 0);
+                    let angle = atan2(p.y - mouseY, p.x - mouseX);
+                    p.vx += cos(angle) * force;
+                    p.vy += sin(angle) * force;
+                }
+
+                // 3. Хаос
+                p.vx += random(-chaos, chaos);
+                p.vy += random(-chaos, chaos);
+
+                // Трение
+                p.vx *= 0.85;
+                p.vy *= 0.85;
+
+                p.x += p.vx;
+                p.y += p.vy;
+
+                circle(p.x, p.y, 3);
+            }
+        }
+
+
+        // ==========================================
+        // MODE 2: WEB (Паутина)
+        // ==========================================
+        function drawWeb(speed) {
+            stroke(state.hue, 80, 100, 40);
+            strokeWeight(1);
+            
+            // Ограничитель для производительности (не рисуем линии, если точек слишком много)
+            let maxDist = 20 + state.params.c * 30; 
+            
+            for (let i = 0; i < particles.length; i++) {
+                let p = particles[i];
+                
+                // Простое движение к цели (без инерции для Web)
+                p.x = lerp(p.x, p.targetX, 0.1 * speed);
+                p.y = lerp(p.y, p.targetY, 0.1 * speed);
+
+                // Рисуем связи с соседями
+                // Чтобы не тормозило, проверяем только некоторые частицы
+                if (i % 2 === 0) { 
+                    // Проверяем случайного соседа (дешевый хак для производительности)
+                    let neighbor = particles[floor(random(particles.length))];
+                    let d = dist(p.x, p.y, neighbor.x, neighbor.y);
+                    if (d < maxDist) {
+                        line(p.x, p.y, neighbor.x, neighbor.y);
+                    }
+                }
+                
+                // Точки
+                point(p.x, p.y);
+            }
+        }
+
+
+        // ==========================================
+        // MODE 3: FLUID (Текучесть)
+        // ==========================================
+        function drawFluid(speed) {
+            noStroke();
+            fill(state.hue, 80, 100, 80);
+            
+            let time = millis() * 0.001 * speed;
+            let noiseScale = 0.02;
+            let flowStrength = 10 + state.params.c * 50;
+
+            for (let p of particles) {
+                // Шум Перлина определяет смещение
+                let n = noise(p.baseX * noiseScale, p.baseY * noiseScale, time);
+                let angle = n * TWO_PI * 2;
+                
+                // Смещение от базовой позиции
+                let offX = cos(angle) * flowStrength;
+                let offY = sin(angle) * flowStrength;
+
+                // Плавное движение
+                p.x = lerp(p.x, p.baseX + offX, 0.1);
+                p.y = lerp(p.y, p.baseY + offY, 0.1);
+                
+                // Размер зависит от шума
+                let size = 2 + n * 4;
+                circle(p.x, p.y, size);
+            }
+        }
+        
+        // Init Standalone
+        if (window.self === window.top) {
+             sampleText();
+        }
+
+    </script>
+</body>
+</html>
