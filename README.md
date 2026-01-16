@@ -40,7 +40,7 @@ The application is built without heavy frameworks, relying on powerful libraries
 | **Visual Effects** | **Canvas API / CSS3** | Raw pixel manipulation and kinetic typography demos. |
 | **Logic** | **Vanilla JS (ES6+)** | State management, DOM synchronization, and event handling. |
 
-## 🔮 Future Roadmap
+## / FUTURE ROADMAP
 
 Planned updates for the next phase of development:
 
@@ -49,7 +49,7 @@ Planned updates for the next phase of development:
 - [ ] **Search Functionality:** Implementing a search bar to filter nodes in real-time.
 - [ ] **Expanded Content:** Completing descriptions for all leaf nodes in the hierarchy.
 
-## 👤 Credits
+## / CREDITS
 
 **Maria Chernobay** — Concept, Architecture, and Development.
 
