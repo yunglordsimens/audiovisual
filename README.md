@@ -2,7 +2,7 @@
 
 > 🚧 **Work in Progress**
 > This project is currently in **active development**. The taxonomy, visual experiments, and graph interactions are being continuously refined.
-> *Last Update: Jan 2026*
+> *Last Update: Nov 2025*
 
 An interactive web archive and experimental playground exploring the intersection of typography, code, and generative design. The project visualizes the taxonomy of web typography technologies through a synchronized dual-interface system.
 
