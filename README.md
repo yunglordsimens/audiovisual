@@ -10,7 +10,7 @@ An interactive web archive and experimental playground exploring the intersectio
 
 ---
 
-### /PREVIEW
+### / PREVIEW
 
 ![System Preview](./preview.png)
 
