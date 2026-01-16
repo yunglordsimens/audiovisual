@@ -12,7 +12,7 @@ An interactive web archive and experimental playground exploring the intersectio
 
 ### Preview
 
-![System Preview](./preview.gif)
+![System Preview](./preview.png)
 
 ---
 
