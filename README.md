@@ -16,7 +16,7 @@ An interactive web archive and experimental playground exploring the intersectio
 
 ---
 
-## ∿ System Overview
+## System Overview
 
 This project serves as a comprehensive **living archive**, cataloging various methods of manipulating text on the web—from basic HTML/CSS to advanced WebGL shaders and AI interactions.
 
@@ -29,7 +29,7 @@ The interface features a unique **dual-navigation system**:
 * **Context-Aware Environment:** The background visual ecosystem (built with **p5.js**) shifts its behavior (Wave, Pulse, Pixel Storm) based on the currently selected topic.
 * **Embedded Showcases:** Specific nodes trigger isolated iframes demonstrating raw techniques.
 
-## 🛠 Tech Architecture
+## Tech Architecture
 
 The application is built without heavy frameworks, relying on powerful libraries for specific visual tasks:
 
@@ -40,7 +40,7 @@ The application is built without heavy frameworks, relying on powerful libraries
 | **Visual Effects** | **Canvas API / CSS3** | Raw pixel manipulation and kinetic typography demos. |
 | **Logic** | **Vanilla JS (ES6+)** | State management, DOM synchronization, and event handling. |
 
-## 🔮 Future Roadmap
+## Future Roadmap
 
 Planned updates for the next phase of development:
 
@@ -49,7 +49,7 @@ Planned updates for the next phase of development:
 - [ ] **Search Functionality:** Implementing a search bar to filter nodes in real-time.
 - [ ] **Expanded Content:** Completing descriptions for all leaf nodes in the hierarchy.
 
-## 👤 Credits
+## Credits
 
 **Maria Chernobay** — Concept, Architecture, and Development.
 
@@ -57,4 +57,4 @@ Developed as part of the digital research curriculum at **UMPRUM**.
 
 ---
 
-© 2024–2026 Maria Chernobay.
+© 2025–2026 Maria Chernobay.
