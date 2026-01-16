@@ -6,7 +6,7 @@
 
 An interactive web archive and experimental playground exploring the intersection of typography, code, and generative design. The project visualizes the taxonomy of web typography technologies through a synchronized dual-interface system.
 
-**[View Live Project](https://yunglordsimens.github.io/audiovisual/)**
+🔗 **[View Live Project](https://yunglordsimens.github.io/audiovisual/)**
 
 ---
 
