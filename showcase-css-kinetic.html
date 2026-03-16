@@ -2,88 +2,62 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <title>CSS Kinetic</title>
+    <link rel="stylesheet" href="css/showcase-base.css">
     <style>
-        body {
-            margin: 0; overflow: hidden; background: transparent;
-            display: flex; flex-direction: column; justify-content: center;
-            height: 100vh; font-family: 'Arial', sans-serif;
-        }
-        
-        /* Контейнер для бегущей строки */
+        body { justify-content:center; }
         .track {
-            white-space: nowrap;
-            will-change: transform;
-            font-weight: 900;
-            text-transform: uppercase;
-            -webkit-text-stroke: 1px #FFF;
-            color: transparent; 
-            opacity: 0.8;
+            white-space:nowrap; will-change:transform;
+            font-weight:900; text-transform:uppercase;
+            -webkit-text-stroke:1px #FFF; color:transparent; opacity:0.8;
         }
-        
-        /* Стили для разных строк */
-        .row-1 { color: transparent; -webkit-text-stroke: 2px #00FFFF; }
-        .row-2 { color: #FF003C; -webkit-text-stroke: 0; }
-        .row-3 { color: transparent; -webkit-text-stroke: 1px #FFFF00; }
-
+        .row-1 { color:transparent; -webkit-text-stroke:2px var(--primary); }
+        .row-2 { color:hsl(var(--hue),100%,50%); -webkit-text-stroke:0; }
+        .row-3 { color:transparent; -webkit-text-stroke:1px #FC0; }
     </style>
 </head>
 <body>
+    <div class="viewport" style="flex-direction:column;justify-content:center;">
+        <div class="track row-1" id="t1"></div>
+        <div class="track row-2" id="t2"></div>
+        <div class="track row-3" id="t3"></div>
+    </div>
+<script src="js/lab-bridge.js"></script>
+<script>
+const rows = [document.getElementById('t1'), document.getElementById('t2'), document.getElementById('t3')];
+let off = [0, 0, 0];
 
-    <div class="track row-1" id="t1">LOADING...</div>
-    <div class="track row-2" id="t2">LOADING...</div>
-    <div class="track row-3" id="t3">LOADING...</div>
+function updateContent() {
+    const s = LabBridge.getState();
+    const repeated = (s.text + '  ').repeat(20);
+    rows.forEach(r => r.textContent = repeated);
+    const fontSize = 50 + s.params.b * 150;
+    rows.forEach(r => r.style.fontSize = fontSize + 'px');
+}
 
-    <script>
-        const rows = [document.getElementById('t1'), document.getElementById('t2'), document.getElementById('t3')];
-        
-        let state = {
-            text: "KINETIC",
-            params: { a: 0.5, b: 0.5, c: 0.1 }
-        };
-        
-        // Смещение для анимации
-        let offset1 = 0, offset2 = 0, offset3 = 0;
+LabBridge.onTextChange(updateContent);
+LabBridge.onUpdate(updateContent);
 
-        window.addEventListener('message', (e) => {
-            if(e.data.type === 'UPDATE_STATE') {
-                state = e.data;
-                updateContent();
-            }
-        });
+function animate() {
+    const s = LabBridge.getState();
+    const speed = 2 + s.params.a * 20;
+    off[0] -= speed;
+    off[1] += speed * (1 + s.params.c);
+    off[2] -= speed * (0.5 + s.params.c);
 
-        function updateContent() {
-            // 1. Обновляем текст
-            rows.forEach(r => r.textContent = state.text.repeat(10)); // Повторяем текст для длины
-            
-            // 2. Обновляем размер (Param B)
-            const fontSize = 50 + (state.params.b * 150);
-            rows.forEach(r => r.style.fontSize = fontSize + 'px');
-        }
+    // Smooth loop: reset based on actual text width
+    for (let i = 0; i < 3; i++) {
+        const w = rows[i].scrollWidth / 2;
+        if (Math.abs(off[i]) > w) off[i] = 0;
+    }
+    rows[0].style.transform = `translateX(${off[0]}px)`;
+    rows[1].style.transform = `translateX(${off[1]}px)`;
+    rows[2].style.transform = `translateX(${off[2]}px)`;
+    requestAnimationFrame(animate);
+}
 
-        function animate() {
-            // Param A = Скорость
-            // Param C = Разница в скорости между полосами
-            const baseSpeed = 2 + (state.params.a * 20);
-            
-            offset1 -= baseSpeed;
-            offset2 += baseSpeed * (1 + state.params.c); // Вторая строка едет обратно
-            offset3 -= baseSpeed * (0.5 + state.params.c);
-
-            // Зацикливание (грубое, но эффективное)
-            if (Math.abs(offset1) > 2000) offset1 = 0;
-            if (Math.abs(offset2) > 2000) offset2 = 0;
-            if (Math.abs(offset3) > 2000) offset3 = 0;
-
-            rows[0].style.transform = `translateX(${offset1}px)`;
-            rows[1].style.transform = `translateX(${offset2}px)`;
-            rows[2].style.transform = `translateX(${offset3}px)`;
-
-            requestAnimationFrame(animate);
-        }
-
-        // Старт
-        updateContent();
-        animate();
-    </script>
+updateContent();
+animate();
+</script>
 </body>
 </html>

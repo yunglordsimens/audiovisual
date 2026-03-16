@@ -2,277 +2,100 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>SVG Vector Engine</title>
-    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <title>SVG Vectors</title>
+    <link rel="stylesheet" href="css/showcase-base.css">
     <style>
-        :root {
-            --hue: 180;
-            --primary: hsl(var(--hue), 100%, 50%);
-            --bg: transparent;
-        }
-
-        body {
-            margin: 0; overflow: hidden;
-            background: var(--bg);
-            font-family: 'Rajdhani', sans-serif;
-            height: 100vh;
-            display: flex; flex-direction: column;
-            color: var(--primary);
-        }
-
-        /* --- VIEWPORT --- */
-        .viewport {
-            flex: 1;
-            position: relative;
-            display: flex; justify-content: center; align-items: center;
-            overflow: hidden;
-        }
-
-        svg {
-            width: 100%;
-            height: 100%;
-            /* Делаем SVG адаптивным */
-            max-height: 80vh; 
-        }
-
-        text {
-            font-family: 'Rajdhani', sans-serif;
-            font-weight: 900;
-            text-anchor: middle;
-            dominant-baseline: middle;
-            transition: fill 0.3s, stroke 0.3s;
-        }
-
-        /* --- SELECTOR BAR --- */
-        .selector-bar {
-            height: 60px;
-            display: flex; justify-content: center; gap: 5px; padding: 10px;
-            background: rgba(0,0,0,0.8);
-            border-top: 1px solid var(--primary);
-            backdrop-filter: blur(5px);
-            z-index: 10;
-        }
-        .mode-btn {
-            background: transparent; border: 1px solid #333; color: #555;
-            font-family: 'Share Tech Mono', monospace; font-size: 12px; padding: 0 15px;
-            cursor: pointer; transition: all 0.2s;
-            clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
-        }
-        .mode-btn:hover { border-color: var(--primary); color: var(--primary); }
-        .mode-btn.active { background: var(--primary); color: #000; font-weight: bold; box-shadow: 0 0 15px var(--primary); }
-
-
-        /* --- MODE SPECIFIC STYLES --- */
-        
-        /* NEON WIRE Styles */
-        .neon-text {
-            fill: none;
-            stroke: var(--primary);
-            stroke-linecap: round;
-            stroke-linejoin: round;
-        }
-        .neon-glow {
-            fill: none;
-            stroke: var(--primary);
-            opacity: 0.3;
-            filter: blur(10px);
-        }
-
-        /* ELASTIC Styles */
-        .elastic-path {
-            fill: none;
-            stroke: rgba(255,255,255,0.1);
-            stroke-width: 1;
-            stroke-dasharray: 5 5;
-        }
-        .elastic-text {
-            fill: var(--primary);
-        }
-
-        /* GLITCH Styles */
-        .glitch-text {
-            fill: #FFF;
-            filter: url(#displacementFilter);
-        }
-
+        svg { width:100%; height:100%; max-height:80vh; }
+        text { font-family:'Rajdhani',sans-serif; font-weight:900; text-anchor:middle; dominant-baseline:middle; }
+        .neon-text { fill:none; stroke:var(--primary); stroke-linecap:round; }
+        .neon-glow { fill:none; stroke:var(--primary); opacity:0.3; filter:blur(10px); }
+        .elastic-path { fill:none; stroke:rgba(255,255,255,0.1); stroke-width:1; stroke-dasharray:5 5; }
+        .elastic-text { fill:var(--primary); }
+        .glitch-text { fill:#FFF; }
     </style>
 </head>
 <body>
-
     <div class="viewport">
         <svg viewBox="0 0 800 400" id="main-svg">
             <defs>
-                <filter id="displacementFilter">
-                    <feTurbulence type="turbulence" baseFrequency="0.05" numOctaves="2" result="turbulence" />
-                    <feDisplacementMap in2="turbulence" in="SourceGraphic" scale="30" xChannelSelector="R" yChannelSelector="G" />
+                <filter id="dispFilter">
+                    <feTurbulence type="turbulence" baseFrequency="0.05" numOctaves="2" result="turb" id="turb"/>
+                    <feDisplacementMap in2="turb" in="SourceGraphic" scale="30" xChannelSelector="R" yChannelSelector="G" id="disp"/>
                 </filter>
-                
-                <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%" style="stop-color:var(--primary);stop-opacity:1" />
-                    <stop offset="100%" style="stop-color:#FFF;stop-opacity:1" />
-                </linearGradient>
             </defs>
-
             <g id="grp-neon" style="display:none">
-                <text x="400" y="200" class="neon-glow" font-size="120">SVG</text>
-                <text x="400" y="200" class="neon-text" font-size="120">SVG</text>
+                <text x="400" y="200" class="neon-glow" font-size="120" id="neon-glow-t">SVG</text>
+                <text x="400" y="200" class="neon-text" font-size="120" id="neon-main-t">SVG</text>
             </g>
-
             <g id="grp-elastic" style="display:none">
-                <path id="textCurve" d="M 50 200 Q 400 200 750 200" class="elastic-path" />
+                <path id="textCurve" d="M 50 200 Q 400 200 750 200" class="elastic-path"/>
                 <text font-size="80" class="elastic-text">
-                    <textPath href="#textCurve" startOffset="50%" text-anchor="middle" id="elastic-text-path">
-                        SVG VECTOR
-                    </textPath>
+                    <textPath href="#textCurve" startOffset="50%" text-anchor="middle" id="elastic-tp">SVG VECTOR</textPath>
                 </text>
             </g>
-
             <g id="grp-glitch" style="display:none">
-                <text x="400" y="200" class="glitch-text" font-size="150">GLITCH</text>
+                <text x="400" y="200" class="glitch-text" font-size="150" filter="url(#dispFilter)" id="glitch-t">GLITCH</text>
             </g>
         </svg>
     </div>
-
     <div class="selector-bar">
-        <button class="mode-btn active" onclick="setMode('neon', this)">NEON_WIRE</button>
-        <button class="mode-btn" onclick="setMode('elastic', this)">ELASTIC</button>
-        <button class="mode-btn" onclick="setMode('glitch', this)">LIQUID_GLITCH</button>
+        <button class="mode-btn active" onclick="setMode('neon',this)">NEON_WIRE</button>
+        <button class="mode-btn" onclick="setMode('elastic',this)">ELASTIC</button>
+        <button class="mode-btn" onclick="setMode('glitch',this)">LIQUID_GLITCH</button>
     </div>
+<script src="js/lab-bridge.js"></script>
+<script>
+let mode = 'neon', time = 0;
+const groups = { neon: document.getElementById('grp-neon'), elastic: document.getElementById('grp-elastic'), glitch: document.getElementById('grp-glitch') };
 
-    <script>
-        // --- STATE ---
-        let currentMode = 'neon';
-        let state = {
-            text: "VECTOR",
-            params: { a: 0.5, b: 0.5, c: 0.1 },
-            hue: 180
-        };
-        let time = 0;
+window.setMode = function(m, btn) {
+    mode = m;
+    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    Object.values(groups).forEach(g => g.style.display = 'none');
+    groups[m].style.display = 'block';
+    updateText();
+};
 
-        // --- REFS ---
-        const svg = document.getElementById('main-svg');
-        const groups = {
-            neon: document.getElementById('grp-neon'),
-            elastic: document.getElementById('grp-elastic'),
-            glitch: document.getElementById('grp-glitch')
-        };
+function updateText() {
+    const t = LabBridge.getState().text;
+    document.getElementById('neon-glow-t').textContent = t;
+    document.getElementById('neon-main-t').textContent = t;
+    document.getElementById('elastic-tp').textContent = t;
+    document.getElementById('glitch-t').textContent = t;
+}
 
-        // --- INIT ---
-        setMode('neon', document.querySelector('.mode-btn'));
+LabBridge.onTextChange(updateText);
+setMode('neon', document.querySelector('.mode-btn'));
 
-        // --- MESSAGE HANDLER ---
-        window.addEventListener('message', (e) => {
-            if (e.data.type === 'UPDATE_STATE') {
-                state = e.data;
-                updateGlobalStyles();
-                updateTextContent();
-            }
+function animate() {
+    const s = LabBridge.getState();
+    time += 0.01 + s.params.a * 0.05;
+
+    if (mode === 'neon') {
+        const w = 1 + s.params.b * 4;
+        const dash = s.params.c * 300;
+        ['neon-glow-t','neon-main-t'].forEach(id => {
+            const el = document.getElementById(id);
+            el.setAttribute('stroke-width', w);
+            el.setAttribute('stroke-dasharray', `${dash} ${dash/2}`);
+            el.setAttribute('stroke-dashoffset', time * -100);
         });
-
-        function updateGlobalStyles() {
-            document.documentElement.style.setProperty('--hue', state.hue);
-        }
-
-        function updateTextContent() {
-            // Обновляем текст во всех режимах
-            
-            // Neon
-            groups.neon.querySelectorAll('text').forEach(t => t.textContent = state.text);
-            
-            // Elastic (внутри textPath)
-            document.getElementById('elastic-text-path').textContent = state.text;
-            
-            // Glitch
-            groups.glitch.querySelector('text').textContent = state.text;
-        }
-
-        function setMode(mode, btn) {
-            currentMode = mode;
-            
-            // UI update
-            document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
-            if(btn) btn.classList.add('active');
-
-            // Visibility update
-            Object.values(groups).forEach(g => g.style.display = 'none');
-            groups[mode].style.display = 'block';
-            
-            updateTextContent();
-        }
-
-
-        // --- ANIMATION LOOP ---
-        function animate() {
-            time += 0.01 + (state.params.a * 0.05); // Param A = Global Speed
-
-            // 1. LOGIC FOR NEON
-            if (currentMode === 'neon') {
-                const textEls = groups.neon.querySelectorAll('text');
-                
-                // Param B = Stroke Width (1..5)
-                const width = 1 + state.params.b * 4;
-                
-                // Param C = Dash Array (Разрыв линии)
-                // От 0 (сплошная) до 100 (пунктир)
-                const dash = state.params.c * 300; 
-                
-                textEls.forEach(el => {
-                    el.setAttribute('stroke-width', width);
-                    el.setAttribute('stroke-dasharray', `${dash} ${dash/2}`);
-                    // Анимируем сдвиг штриха
-                    el.setAttribute('stroke-dashoffset', time * -100);
-                });
-            }
-
-            // 2. LOGIC FOR ELASTIC
-            if (currentMode === 'elastic') {
-                const path = document.getElementById('textCurve');
-                
-                // Param B = Амплитуда изгиба
-                const amp = state.params.b * 150;
-                
-                // Param C = Частота волны (Chaos)
-                const freq = 1 + state.params.c * 5;
-
-                // Двигаем контрольную точку кривой Безье (Q)
-                // M 50 200 Q [ControlX] [ControlY] 750 200
-                const cy = 200 + Math.sin(time * freq) * amp;
-                const cx = 400 + Math.cos(time * freq * 0.5) * (amp * 0.5);
-
-                path.setAttribute('d', `M 50 200 Q ${cx} ${cy} 750 200`);
-                
-                // Растягиваем текст по длине (spacing)
-                // document.getElementById('elastic-text-path').setAttribute('letter-spacing', state.params.c * 20);
-            }
-
-            // 3. LOGIC FOR GLITCH (FILTER)
-            if (currentMode === 'glitch') {
-                const turbulence = document.querySelector('#displacementFilter feTurbulence');
-                const displacement = document.querySelector('#displacementFilter feDisplacementMap');
-                
-                // Param B = Сила искажения (Scale)
-                const scale = state.params.b * 100;
-                displacement.setAttribute('scale', scale);
-                
-                // Param C = "Зернистость" (Base Frequency)
-                // baseFrequency="0.01" (плавно) -> "0.5" (шум)
-                const freq = 0.01 + (state.params.c * 0.2);
-                
-                // Анимируем seed или frequency для движения воды
-                // turbulence.setAttribute('baseFrequency', `${freq} ${freq}`); // Шум меняется
-                // Лучше менять seed, но в SMIL/JS для плавности меняем атрибут baseFrequency чуть-чуть
-                
-                // Плавное течение: меняем y-компоненту частоты
-                turbulence.setAttribute('baseFrequency', `${freq} ${0.02 + Math.sin(time)*0.01}`);
-            }
-
-            requestAnimationFrame(animate);
-        }
-
-        // Запуск
-        if (window.self === window.top) updateTextContent(); // Standalone check
-        animate();
-
-    </script>
+    } else if (mode === 'elastic') {
+        const amp = s.params.b * 150;
+        const freq = 1 + s.params.c * 5;
+        const cy = 200 + Math.sin(time * freq) * amp;
+        const cx = 400 + Math.cos(time * freq * 0.5) * (amp * 0.5);
+        document.getElementById('textCurve').setAttribute('d', `M 50 200 Q ${cx} ${cy} 750 200`);
+    } else if (mode === 'glitch') {
+        const scale = s.params.b * 100;
+        const freq = 0.01 + s.params.c * 0.2;
+        document.getElementById('disp').setAttribute('scale', scale);
+        document.getElementById('turb').setAttribute('baseFrequency', `${freq} ${0.02 + Math.sin(time)*0.01}`);
+    }
+    requestAnimationFrame(animate);
+}
+animate();
+</script>
 </body>
 </html>

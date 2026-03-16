@@ -2,258 +2,113 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Web Animations API Sequencer</title>
-    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <title>Web Anim API</title>
+    <link rel="stylesheet" href="css/showcase-base.css">
     <style>
-        :root {
-            --hue: 180;
-            --primary: hsl(var(--hue), 100%, 50%);
-            --bg: transparent;
-        }
-
-        body {
-            margin: 0; overflow: hidden;
-            background: var(--bg);
-            font-family: 'Rajdhani', sans-serif;
-            height: 100vh;
-            display: flex; flex-direction: column;
-            color: var(--primary);
-        }
-
-        /* --- VIEWPORT --- */
-        .viewport {
-            flex: 1;
-            position: relative;
-            display: flex; justify-content: center; align-items: center;
-            overflow: hidden;
-            perspective: 1000px;
-        }
-
-        .char-wrapper {
-            display: flex;
-            font-size: 8vw;
-            font-weight: 900;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-        }
-
-        .char {
-            display: inline-block;
-            transform-origin: center bottom;
-            will-change: transform, opacity, filter;
-            white-space: pre;
-        }
-
-        /* --- SELECTOR BAR --- */
-        .selector-bar {
-            height: 60px;
-            display: flex; justify-content: center; gap: 5px; padding: 10px;
-            background: rgba(0,0,0,0.8);
-            border-top: 1px solid var(--primary);
-            backdrop-filter: blur(5px);
-            z-index: 10;
-        }
-        .mode-btn {
-            background: transparent; border: 1px solid #333; color: #555;
-            font-family: 'Share Tech Mono', monospace; font-size: 12px; padding: 0 15px;
-            cursor: pointer; transition: all 0.2s;
-            clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
-        }
-        .mode-btn:hover { border-color: var(--primary); color: var(--primary); }
-        .mode-btn.active { background: var(--primary); color: #000; font-weight: bold; box-shadow: 0 0 15px var(--primary); }
-
+        .char-wrapper { display:flex; font-size:8vw; font-weight:900; text-transform:uppercase; letter-spacing:0.1em; }
+        .char { display:inline-block; transform-origin:center bottom; will-change:transform,opacity,filter; white-space:pre; color:var(--primary); }
     </style>
 </head>
 <body>
-
-    <div class="viewport" id="viewport">
-        <div class="char-wrapper" id="char-container">
-            </div>
+    <div class="viewport">
+        <div class="char-wrapper" id="chars"></div>
     </div>
-
     <div class="selector-bar">
-        <button class="mode-btn active" onclick="setMode('elastic', this)">ELASTIC_SNAP</button>
-        <button class="mode-btn" onclick="setMode('stagger', this)">STAGGER_WAVE</button>
-        <button class="mode-btn" onclick="setMode('warp', this)">TIME_WARP</button>
+        <button class="mode-btn active" onclick="setMode('elastic',this)">ELASTIC</button>
+        <button class="mode-btn" onclick="setMode('stagger',this)">STAGGER</button>
+        <button class="mode-btn" onclick="setMode('warp',this)">TIME_WARP</button>
     </div>
+<script src="js/lab-bridge.js"></script>
+<script>
+const container = document.getElementById('chars');
+let mode = 'elastic', anims = [];
 
-    <script>
-        const container = document.getElementById('char-container');
-        let currentMode = 'elastic';
-        let animations = []; // Храним ссылки на активные анимации для управления ими
-        
-        let state = {
-            text: "WAAPI_SEQ",
-            params: { a: 0.5, b: 0.5, c: 0.1 },
-            hue: 180
-        };
+window.setMode = function(m, btn) {
+    mode = m;
+    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    build();
+};
 
-        // --- INIT ---
-        initMode();
+LabBridge.onTextChange(() => build());
 
-        // --- BRIDGE ---
-        window.addEventListener('message', (e) => {
-            if (e.data.type === 'UPDATE_STATE') {
-                const oldText = state.text;
-                state = e.data;
-                document.documentElement.style.setProperty('--hue', state.hue);
+// Only rebuild DOM on text change; for param changes, update live
+let paramUpdateTimer = null;
+LabBridge.onUpdate((state, textChanged) => {
+    if (!textChanged) {
+        clearTimeout(paramUpdateTimer);
+        paramUpdateTimer = setTimeout(() => {
+            if (mode === 'warp') updateWarpRate();
+            // elastic/stagger: CSS vars handle most changes, only rebuild if needed
+        }, 50);
+    }
+});
 
-                // Если текст изменился - полная перестройка
-                if (oldText !== state.text) {
-                    initMode();
-                } else {
-                    // Если изменились только параметры - обновляем живые анимации
-                    updateLiveAnimations();
-                }
-            }
-        });
+function build() {
+    container.innerHTML = '';
+    anims.forEach(a => a.cancel()); anims = [];
+    const s = LabBridge.getState();
+    const els = s.text.split('').map(ch => {
+        const span = document.createElement('span');
+        span.className = 'char'; span.textContent = ch;
+        container.appendChild(span); return span;
+    });
+    if (mode === 'elastic') runElastic(els);
+    else if (mode === 'stagger') runStagger(els);
+    else if (mode === 'warp') runWarp(els);
+}
 
-        window.setMode = function(mode, btn) {
-            document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            currentMode = mode;
-            initMode();
-        }
+function runElastic(els) {
+    const s = LabBridge.getState();
+    const dur = 2000 - s.params.a * 1500;
+    const bounce = s.params.c;
+    const kf = [
+        { transform:'scale(0)', offset:0 },
+        { transform:`scale(${1+bounce})`, offset:0.4 },
+        { transform:`scale(${1-bounce*0.5})`, offset:0.6 },
+        { transform:`scale(${1+bounce*0.2})`, offset:0.8 },
+        { transform:'scale(1)', offset:1 }
+    ];
+    els.forEach((el, i) => {
+        anims.push(el.animate(kf, { duration:dur, delay:i*(s.params.b*200), easing:'linear', fill:'both', iterations:Infinity, direction:'alternate' }));
+    });
+}
 
-        function createChars() {
-            container.innerHTML = '';
-            animations.forEach(a => a.cancel()); // Очистка старых анимаций
-            animations = [];
-            
-            const chars = state.text.split('');
-            return chars.map((char, i) => {
-                const span = document.createElement('span');
-                span.className = 'char';
-                span.textContent = char;
-                container.appendChild(span);
-                return span;
-            });
-        }
+function runStagger(els) {
+    const s = LabBridge.getState();
+    const dur = 1000 + s.params.a * 1000;
+    const y = 20 + s.params.c * 100;
+    const kf = [
+        { transform:`translateY(${y}px)`, opacity:0.2, filter:'blur(10px)' },
+        { transform:`translateY(-${y}px)`, opacity:1, filter:'blur(0px)' },
+        { transform:`translateY(${y}px)`, opacity:0.2, filter:'blur(10px)' }
+    ];
+    els.forEach((el, i) => {
+        anims.push(el.animate(kf, { duration:dur, delay:i*(s.params.b*300), easing:'ease-in-out', iterations:Infinity }));
+    });
+}
 
-        function initMode() {
-            const els = createChars();
-            
-            if (currentMode === 'elastic') runElastic(els);
-            else if (currentMode === 'stagger') runStagger(els);
-            else if (currentMode === 'warp') runWarp(els);
-        }
+function runWarp(els) {
+    const s = LabBridge.getState();
+    const rate = (s.params.a - 0.5) * 4;
+    const kf = [
+        { transform:'rotateX(0) rotateY(0)', color:'var(--primary)' },
+        { transform:'rotateX(180deg) rotateY(90deg)', color:'#FFF', offset:0.5 },
+        { transform:'rotateX(360deg) rotateY(0)', color:'var(--primary)' }
+    ];
+    els.forEach((el, i) => {
+        const a = el.animate(kf, { duration:3000, delay:i*(s.params.c*-500), iterations:Infinity, easing:'linear' });
+        a.playbackRate = rate;
+        anims.push(a);
+    });
+}
 
-        function updateLiveAnimations() {
-            // В режиме WARP мы меняем playbackRate на лету
-            if (currentMode === 'warp') {
-                // Param A (0..1) -> Rate (-2..2)
-                const rate = (state.params.a - 0.5) * 4; 
-                animations.forEach(anim => {
-                    anim.playbackRate = rate;
-                });
-            } 
-            // В других режимах проще перезапустить для применения новых параметров
-            else {
-                initMode();
-            }
-        }
+function updateWarpRate() {
+    const rate = (LabBridge.getState().params.a - 0.5) * 4;
+    anims.forEach(a => { a.playbackRate = rate; });
+}
 
-
-        // ==========================================
-        // MODE 1: ELASTIC SNAP (Physics Keyframes)
-        // ==========================================
-        function runElastic(els) {
-            // Param A: Скорость
-            const duration = 2000 - (state.params.a * 1500); // 500ms - 2000ms
-            
-            // Param C: Сила отскока (генерируем разные кифреймы)
-            const bounce = state.params.c; 
-            
-            // Генерируем массив трансформаций (Scale)
-            // WAAPI позволяет передавать массив offset-ов
-            const keyframes = [
-                { transform: 'scale(0)', offset: 0 },
-                { transform: `scale(${1 + bounce})`, offset: 0.4 },
-                { transform: `scale(${1 - bounce * 0.5})`, offset: 0.6 },
-                { transform: `scale(${1 + bounce * 0.2})`, offset: 0.8 },
-                { transform: 'scale(1)', offset: 1 }
-            ];
-
-            els.forEach((el, i) => {
-                // Param B: Задержка между буквами
-                const delay = i * (state.params.b * 200);
-
-                const anim = el.animate(keyframes, {
-                    duration: duration,
-                    delay: delay,
-                    easing: 'linear', // Эффект пружины зашит в кифреймы
-                    fill: 'both',
-                    iterations: Infinity,
-                    direction: 'alternate' // Туда-сюда
-                });
-                animations.push(anim);
-            });
-        }
-
-
-        // ==========================================
-        // MODE 2: STAGGER WAVE (Complex Property Mix)
-        // ==========================================
-        function runStagger(els) {
-            const duration = 1000 + (state.params.a * 1000);
-            
-            // Param C: Смещение по Y
-            const yOffset = 20 + (state.params.c * 100);
-
-            const keyframes = [
-                { transform: `translateY(${yOffset}px)`, opacity: 0.2, filter: 'blur(10px)' },
-                { transform: `translateY(-${yOffset}px)`, opacity: 1, filter: 'blur(0px)' },
-                { transform: `translateY(${yOffset}px)`, opacity: 0.2, filter: 'blur(10px)' }
-            ];
-
-            els.forEach((el, i) => {
-                // Param B: Плотность волны (Stagger)
-                // Вычисляем задержку так, чтобы создать "змейку"
-                const delay = i * (state.params.b * 300);
-                
-                const anim = el.animate(keyframes, {
-                    duration: duration,
-                    delay: delay,
-                    easing: 'ease-in-out',
-                    iterations: Infinity
-                });
-                animations.push(anim);
-            });
-        }
-
-
-        // ==========================================
-        // MODE 3: TIME WARP (Playback Rate Control)
-        // ==========================================
-        function runWarp(els) {
-            // Создаем сложную 3D анимацию вращения
-            const keyframes = [
-                { transform: 'rotateX(0deg) rotateY(0deg)', color: 'var(--primary)' },
-                { transform: 'rotateX(180deg) rotateY(90deg)', color: '#FFF', offset: 0.5 },
-                { transform: 'rotateX(360deg) rotateY(0deg)', color: 'var(--primary)' }
-            ];
-
-            // Исходная скорость
-            const baseRate = (state.params.a - 0.5) * 4; 
-
-            els.forEach((el, i) => {
-                // Param C: Рассинхрон (Offset)
-                const delay = i * (state.params.c * -500); // Отрицательная задержка = старт с середины
-
-                const anim = el.animate(keyframes, {
-                    duration: 3000, // Базовая длительность
-                    delay: delay,
-                    iterations: Infinity,
-                    easing: 'linear'
-                });
-                
-                // Сразу применяем скорость из слайдера
-                anim.playbackRate = baseRate;
-                
-                animations.push(anim);
-            });
-        }
-
-    </script>
+build();
+</script>
 </body>
 </html>

@@ -1,0 +1,63 @@
+/* showcase-base.css — Shared styles for all showcase units */
+
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@700;900&family=Share+Tech+Mono&display=swap');
+
+:root {
+    --hue: 180;
+    --val-a: 0.5;
+    --val-b: 0.5;
+    --val-c: 0.1;
+    --primary: hsl(var(--hue), 100%, 50%);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+    margin: 0; overflow: hidden;
+    background: transparent;
+    font-family: 'Rajdhani', sans-serif;
+    color: white;
+    height: 100vh;
+    display: flex; flex-direction: column;
+}
+
+.viewport {
+    flex: 1; position: relative;
+    display: flex; justify-content: center; align-items: center;
+    overflow: hidden;
+}
+
+/* Selector bar at bottom */
+.selector-bar {
+    height: 50px; flex-shrink: 0;
+    display: flex; justify-content: center; gap: 4px; padding: 8px;
+    background: rgba(0,0,0,0.85);
+    border-top: 1px solid var(--primary);
+    backdrop-filter: blur(8px);
+    z-index: 10;
+}
+
+.mode-btn {
+    background: transparent;
+    border: 1px solid #333;
+    color: #556;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    padding: 0 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 1px;
+    clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+}
+.mode-btn:hover { border-color: var(--primary); color: var(--primary); }
+.mode-btn.active {
+    background: var(--primary); color: #000;
+    font-weight: bold; box-shadow: 0 0 12px var(--primary);
+    border-color: var(--primary);
+}
+
+/* Scanlines */
+.scanlines {
+    position: fixed; inset: 0; pointer-events: none; z-index: 100;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.04) 2px, rgba(0,0,0,0.04) 4px);
+}

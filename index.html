@@ -3,52 +3,48 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Typography Lab v8.0</title>
-    
+    <title>Typography Lab v9.0</title>
     <link rel="stylesheet" href="css/style.css">
-
     <script src="https://d3js.org/d3.v7.min.js"></script>
 </head>
 <body>
 
-    <iframe id="background-iframe" src=""></iframe>
-
+    <iframe id="background-iframe" src="" aria-hidden="true"></iframe>
     <div id="graph-layer"></div>
 
     <div class="ui-overlay">
         <div class="menu-panel" id="menu-panel">
-            <h1>Typography Lab v8.0</h1>
+            <div class="menu-header">
+                <div class="menu-tag">// RESEARCH ARCHIVE</div>
+                <h1>TYPO_LAB <span class="ver">v9</span></h1>
+                <div class="menu-status" id="menu-status">READY :: <span id="node-count">0</span> NODES</div>
+            </div>
             <div id="tree-container"></div>
         </div>
-        <div class="resizer" id="resizer"></div>
-        
-        <div class="brutalist-input-wrapper" id="input-module">
-            <div class="brutalist-header" id="input-header">:: TARGET_INPUT</div>
-    
-            <input type="text" id="global-text-input" placeholder="WAITING..." value="Philipelepeleplein" spellcheck="false">
-        </div>
+        <div class="resizer" id="resizer"><div class="resizer-grip"></div></div>
+    </div>
 
-        <div style="flex:1;"></div>
+    <div class="brutalist-input-wrapper" id="input-module">
+        <div class="module-header" id="input-header">:: TARGET_INPUT</div>
+        <input type="text" id="global-text-input" placeholder="TYPE HERE..." value="TYPOGRAPHY" spellcheck="false" autocomplete="off">
     </div>
 
     <div class="control-deck" id="control-deck">
-        <div class="deck-header" id="deck-header">:: CONTROL_MODULE</div>
-        
+        <div class="module-header" id="deck-header">:: CONTROL_MODULE</div>
         <div class="slider-group">
-            <label>VAR_A (SPEED)</label>
+            <label>VAR_A <span class="sv" id="val-a">50</span></label>
             <input type="range" id="param-a" min="0" max="100" value="50">
         </div>
         <div class="slider-group">
-            <label>VAR_B (SIZE)</label>
+            <label>VAR_B <span class="sv" id="val-b">50</span></label>
             <input type="range" id="param-b" min="0" max="100" value="50">
         </div>
         <div class="slider-group">
-            <label>VAR_C (CHAOS)</label>
+            <label>VAR_C <span class="sv" id="val-c">10</span></label>
             <input type="range" id="param-c" min="0" max="100" value="10">
         </div>
-
         <div class="export-group">
-            <label>:: SAVE_FRAME AS ::</label>
+            <label>:: EXPORT ::</label>
             <div class="export-buttons">
                 <button class="btn-mini" data-fmt="svg">SVG</button>
                 <button class="btn-mini" data-fmt="png">PNG</button>
@@ -56,12 +52,11 @@
             </div>
         </div>
     </div>
-    </div>
 
     <div id="window-container">
         <div class="win-header" id="win-header">
-            <span class="win-title" id="win-title">Title</span>
-            <button class="win-close" id="win-close">×</button>
+            <span class="win-title" id="win-title">INIT</span>
+            <button class="win-close" id="win-close">&times;</button>
         </div>
         <div class="win-content" id="win-content"></div>
     </div>
