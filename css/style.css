@@ -1,4 +1,4 @@
-/* css/style.css v7.2 - Final Fixes */
+/* css/style.css v8.1 - tree lines, path highlight, window resize fix */
 
 /* --- 1. GLOBAL & FONTS --- */
 @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600;700&family=Share+Tech+Mono&display=swap');
@@ -9,6 +9,7 @@
     --bg-dark: #050508;       /* Deep Void */
     --glass: rgba(10, 15, 20, 0.65);
     --border: rgba(0, 240, 255, 0.3);
+    --line: #2b3843;          /* tree + graph idle lines */
 }
 
 body, html {
@@ -84,10 +85,50 @@ body::before {
 #tree-container::-webkit-scrollbar { width: 4px; }
 #tree-container::-webkit-scrollbar-thumb { background: var(--primary); }
 
-.tree-item { margin-bottom: 8px; display: flex; align-items: baseline; }
-.ascii-art { color: #555; margin-right: 8px; }
-.clickable-text { cursor: pointer; transition: all 0.3s; color: #889; position: relative; }
-.clickable-text:hover { color: #FFF; text-shadow: 0 0 8px var(--primary); padding-left: 5px; }
+.clickable-text {
+    cursor: pointer; transition: color 0.25s, text-shadow 0.25s;
+    color: #5f6b78; position: relative;
+    display: inline-block; line-height: 26px; padding: 0 6px; white-space: nowrap;
+}
+.clickable-text.has-demo { color: #9fb3c4; }
+.clickable-text.tree-root { color: #FFF; font-weight: bold; letter-spacing: 1px; }
+.clickable-text.tree-level { color: #c8d6e2; }
+.clickable-text:hover { color: #FFF; text-shadow: 0 0 8px var(--primary); }
+
+/* --- TREE LINES (one continuous line per branch, no ASCII) --- */
+#tree-container ul { list-style: none; margin: 0; padding: 0; }
+#tree-container ul ul { padding-left: 8px; }
+#tree-container li { position: relative; }
+#tree-container ul ul li { padding-left: 18px; }
+/* elbow: from the top of the row down to its middle, then right to the label */
+#tree-container ul ul li::before {
+    content: ""; position: absolute; left: 0; top: 0; width: 14px; height: 13px;
+    border-left: 1px solid var(--line); border-bottom: 1px solid var(--line);
+}
+/* continuation down to the next sibling (runs alongside this item's own children) */
+#tree-container ul ul li:not(:last-child)::after {
+    content: ""; position: absolute; left: 0; top: 13px; bottom: 0;
+    border-left: 1px solid var(--line);
+}
+/* hover preview path */
+#tree-container ul ul li.pv-path::before { border-color: var(--accent); }
+#tree-container ul ul li.pv-thru::after { border-color: var(--accent); }
+#tree-container ul ul li.pv-thru::before { border-left-color: var(--accent); }
+#tree-container li.pv-path > .clickable-text { color: #FFF; }
+/* selected path: root -> ... -> node */
+#tree-container ul ul li.act-path::before {
+    border-color: var(--primary); border-width: 0 0 2px 2px; left: -0.5px;
+    filter: drop-shadow(0 0 3px var(--primary));
+}
+#tree-container ul ul li.act-thru::after {
+    border-color: var(--primary); border-left-width: 2px; left: -0.5px;
+    filter: drop-shadow(0 0 3px var(--primary));
+}
+#tree-container ul ul li.act-thru::before {
+    border-left-color: var(--primary); border-left-width: 2px; left: -0.5px;
+    filter: drop-shadow(0 0 3px var(--primary));
+}
+#tree-container li.act-path > .clickable-text { color: #FFF; }
 .clickable-text.active { color: var(--primary); font-weight: bold; text-shadow: 0 0 10px var(--primary); }
 .clickable-text.active::before { content: ">"; margin-right: 5px; color: var(--accent); }
 .clickable-text.preview-mode { color: var(--accent); opacity: 0.7; }
@@ -201,9 +242,9 @@ input[type=range]::-webkit-slider-thumb {
 
 /* --- 6. WINDOW (Floating Content) --- */
 #window-container {
-    position: absolute; 
+    position: fixed;
     top: 50%; left: 50%; 
-    transform: translate(-50%, -50%) scale(0.9);
+    transform: none;
     width: 800px; height: 500px;
     background: rgba(10, 15, 20, 0.85); 
     backdrop-filter: blur(12px);
@@ -212,8 +253,9 @@ input[type=range]::-webkit-slider-thumb {
     box-shadow: 0 20px 50px rgba(0,0,0,0.8);
     z-index: 100; 
     display: none; flex-direction: column;
-    animation: openWindow 0.3s forwards;
-    clip-path: polygon(0 0, 100% 0, 100% calc(100% - 20px), calc(100% - 20px) 100%, 0 100%);
+    animation: openWindow 0.25s ease-out;
+    /* cut corner moved to top-left: the old bottom-right cut sat exactly on the resize handle */
+    clip-path: polygon(20px 0, 100% 0, 100% 100%, 0 100%, 0 20px);
     /* --- НОВЫЕ СВОЙСТВА ДЛЯ РЕСАЙЗА --- */
     resize: both; /* Разрешить изменение размера по обеим осям */
     overflow: hidden; /* Обязательно для работы resize */
@@ -229,7 +271,7 @@ input[type=range]::-webkit-slider-thumb {
     box-shadow: 0 0 5px var(--accent);
 }
 
-@keyframes openWindow { to { transform: translate(-50%, -50%) scale(1); opacity: 1; } }
+@keyframes openWindow { from { opacity: 0; } to { opacity: 1; } }
 
 .win-header {
     background: #0a0a0a; border-bottom: 1px solid var(--border);
@@ -283,3 +325,17 @@ rect.active-node {
     /* Добавляем will-change для производительности */
     will-change: transform, top, left;
 }
+
+/* --- GRAPH PATH HIGHLIGHT --- */
+#graph-layer line { stroke: var(--line); stroke-opacity: 1; transition: stroke 0.3s, stroke-opacity 0.3s; }
+#graph-layer svg:not(.has-sel) line { stroke: #00FFFF; stroke-opacity: 0.35; }
+#graph-layer svg.has-sel line { stroke-opacity: 0.5; }
+#graph-layer svg.has-sel .d3-label { opacity: 0.35; }
+#graph-layer svg line.pv-link { stroke: var(--accent); stroke-opacity: 0.9; stroke-width: 1.5px; }
+#graph-layer svg line.act-link {
+    stroke: var(--primary); stroke-opacity: 1; stroke-width: 2px;
+    filter: drop-shadow(0 0 4px var(--primary));
+}
+rect.act-node:not(.active-node) { stroke: var(--primary) !important; stroke-width: 2px !important; filter: drop-shadow(0 0 6px var(--primary)); }
+rect.pv-node:not(.active-node):not(.preview-node) { stroke: var(--accent) !important; }
+#graph-layer .d3-label.act-label, #graph-layer .d3-label.pv-label { opacity: 1; }

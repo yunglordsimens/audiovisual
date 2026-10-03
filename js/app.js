@@ -1,4 +1,4 @@
-/* js/app.js v8.0 - Resizable Window & Multi-Format Export */
+/* js/app.js v8.1 - Tree lines + path highlight, calm graph, window resize fix */
 
 // --- GLOBALS ---
 let selectedId = null;
@@ -137,31 +137,54 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==========================================
 
 
-    // --- C. MENU BUILDER ---
+    // --- C. MENU BUILDER (nested lists, lines drawn in CSS) ---
     const treeContainer = document.getElementById('tree-container');
-    function buildMenu(data, parent, prefix = "", isRoot = true) {
-        data.forEach((item, i) => {
-            const isLast = i === data.length - 1;
-            const row = document.createElement('div');
-            row.className = 'tree-item';
-            const art = document.createElement('span');
-            art.className = 'ascii-art';
-            art.textContent = prefix + (isRoot ? "" : (isLast ? "└─ " : "├─ "));
+    const menu = document.getElementById('menu-panel');
+    const parentOf = {};
+    function buildMenu(data, parentEl, pid = null) {
+        const ul = document.createElement('ul');
+        ul.className = pid === null ? 'tree' : 'tree-branch';
+        data.forEach(item => {
+            parentOf[item.id] = pid;
+            const li = document.createElement('li');
+            li.dataset.node = item.id;
             const text = document.createElement('span');
-            text.className = 'clickable-text';
+            text.className = 'clickable-text' + (item.url ? ' has-demo' : '') + (item.type ? ' tree-' + item.type : '');
             text.textContent = item.label;
             text.dataset.id = item.id;
-            
             text.addEventListener('mouseenter', () => handleHover(item.id));
             text.addEventListener('mouseleave', () => handleMouseLeave());
             text.addEventListener('click', (e) => { e.stopPropagation(); handleClick(item.id); });
-            
-            row.append(art, text);
-            parent.append(row);
-            if (item.children) buildMenu(item.children, parent, prefix + (isRoot ? "" : (isLast ? "   " : "│  ")), false);
+            li.appendChild(text);
+            if (item.children) buildMenu(item.children, li, item.id);
+            ul.appendChild(li);
         });
+        parentEl.appendChild(ul);
     }
     buildMenu(siteData, treeContainer);
+
+    // root -> ... -> id
+    function pathTo(id) {
+        const out = [];
+        let cur = id;
+        while (cur !== null && cur !== undefined) { out.push(cur); cur = parentOf[cur]; }
+        return out;
+    }
+
+    // kind: 'act' (selected) or 'pv' (hover preview)
+    function markMenuPath(id, kind) {
+        treeContainer.querySelectorAll(`li.${kind}-path, li.${kind}-thru`)
+            .forEach(li => li.classList.remove(`${kind}-path`, `${kind}-thru`));
+        if (!id) return;
+        pathTo(id).forEach(nid => {
+            const li = treeContainer.querySelector(`li[data-node="${CSS.escape(nid)}"]`);
+            if (!li) return;
+            li.classList.add(`${kind}-path`);
+            // the vertical line passes along every earlier sibling on its way down
+            let s = li.previousElementSibling;
+            while (s) { s.classList.add(`${kind}-thru`); s = s.previousElementSibling; }
+        });
+    }
 
     // --- D. D3 GRAPH ---
     const nodes = [], links = [];
@@ -177,9 +200,10 @@ document.addEventListener('DOMContentLoaded', () => {
     flatten(siteData);
 
     const width = window.innerWidth, height = window.innerHeight;
-    const svg = d3.select('#graph-layer').append('svg').attr('width', '100%').attr('height', '100%').attr('viewBox', [0, 0, width, height]);
+    const svg = d3.select('#graph-layer').append('svg').attr('width', '100%').attr('height', '100%');
     const g = svg.append('g');
-    svg.call(d3.zoom().scaleExtent([0.1, 4]).on('zoom', (e) => g.attr('transform', e.transform)));
+    const zoom = d3.zoom().scaleExtent([0.1, 4]).on('zoom', (e) => g.attr('transform', e.transform));
+    svg.call(zoom);
     
     const simulation = d3.forceSimulation(nodes)
         .force('link', d3.forceLink(links).id(d => d.id).distance(100))
@@ -209,9 +233,28 @@ document.addEventListener('DOMContentLoaded', () => {
         label.attr('x', d => d.x).attr('y', d => d.y);
     });
     
-    function dragStart(e, d) { if(!e.active) simulation.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; }
-    function dragging(e, d) { d.fx = e.x; d.fy = e.y; }
-    function dragEnd(e, d) { if(!e.active) simulation.alphaTarget(0); d.fx = null; d.fy = null; }
+    // A plain click no longer wakes the simulation (that was the graph "jumping" on every click).
+    // It only reheats once the node is actually being dragged.
+    function dragStart(e, d) { d.fx = d.x; d.fy = d.y; d._moved = false; }
+    function dragging(e, d) {
+        if (!d._moved) { d._moved = true; if (!e.active) simulation.alphaTarget(0.3).restart(); }
+        d.fx = e.x; d.fy = e.y;
+    }
+    function dragEnd(e, d) { if (d._moved && !e.active) simulation.alphaTarget(0); d.fx = null; d.fy = null; d._moved = false; }
+
+    function markGraphPath(id, kind) {
+        const onPath = new Set(id ? pathTo(id) : []);
+        node.classed(`${kind}-node`, d => onPath.has(d.id));
+        label.classed(`${kind}-label`, d => onPath.has(d.id));
+        link.classed(`${kind}-link`, d => onPath.has(d.source.id) && onPath.has(d.target.id));
+        if (kind === 'act') svg.classed('has-sel', !!id);
+    }
+
+    // keep the graph centred when the browser window changes size
+    window.addEventListener('resize', () => {
+        simulation.force('center', d3.forceCenter(window.innerWidth * 0.6, window.innerHeight * 0.5));
+        simulation.alpha(0.1).restart();
+    });
 
     // --- E. VISUALS ---
     function handleHover(id) {
@@ -220,9 +263,9 @@ document.addEventListener('DOMContentLoaded', () => {
         updateVisuals(id, true);
     }
     function handleMouseLeave() {
+        // just drop the preview; the selected path stays as it is (no re-scroll of the menu)
         previewId = null;
-        if (selectedId) updateVisuals(selectedId, false);
-        else resetVisuals();
+        resetVisuals();
     }
     function handleClick(id) {
         if (!nodeMap[id]) return;
@@ -235,38 +278,48 @@ document.addEventListener('DOMContentLoaded', () => {
         else { bgFrame.src = "about:blank"; }
     }
     function updateVisuals(id, isPreview) {
-        d3.selectAll('rect').classed('preview-node', false);
-        if (isPreview) d3.select(`#node-${id}`).classed('preview-node', true);
-        else {
-            d3.selectAll('rect').classed('active-node', false);
-            d3.select(`#node-${id}`).classed('active-node', true);
+        if (isPreview) {
+            d3.selectAll('rect').classed('preview-node', false);
+            d3.select(`#node-${id}`).classed('preview-node', true);
+            document.querySelectorAll('.clickable-text.preview-mode').forEach(el => el.classList.remove('preview-mode'));
+            const pv = document.querySelector(`.clickable-text[data-id="${id}"]`);
+            if (pv) pv.classList.add('preview-mode');
+            markMenuPath(id, 'pv');
+            markGraphPath(id, 'pv');
+            return;
         }
-        document.querySelectorAll('.clickable-text').forEach(el => {
-            el.classList.remove('preview-mode');
-            if (!isPreview) el.classList.remove('active');
-        });
+        resetVisuals();
+        d3.selectAll('rect').classed('active-node', false);
+        d3.select(`#node-${id}`).classed('active-node', true);
+        document.querySelectorAll('.clickable-text.active').forEach(el => el.classList.remove('active'));
         const menuEl = document.querySelector(`.clickable-text[data-id="${id}"]`);
         if (menuEl) {
-            if (isPreview) menuEl.classList.add('preview-mode');
-            else {
-                menuEl.classList.add('active');
-                menuEl.scrollIntoView({behavior: "smooth", block: "center"});
-            }
+            menuEl.classList.add('active');
+            menuEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
         }
+        markMenuPath(id, 'act');
+        markGraphPath(id, 'act');
     }
     function resetVisuals() {
         d3.selectAll('rect').classed('preview-node', false);
         document.querySelectorAll('.clickable-text').forEach(el => el.classList.remove('preview-mode'));
+        markMenuPath(null, 'pv');
+        markGraphPath(null, 'pv');
+    }
+    function clearSelection() {
+        selectedId = null;
+        d3.selectAll('.active-node').classed('active-node', false);
+        document.querySelectorAll('.active.clickable-text').forEach(el => el.classList.remove('active'));
+        markMenuPath(null, 'act');
+        markGraphPath(null, 'act');
     }
 
     // --- F. WINDOW & DRAG LOGIC ---
     const win = document.getElementById('window-container');
     document.getElementById('win-close').onclick = () => {
         win.style.display = 'none';
-        selectedId = null;
         bgFrame.src = "about:blank";
-        d3.selectAll('.active-node').classed('active-node', false);
-        document.querySelectorAll('.active.clickable-text').forEach(el => el.classList.remove('active'));
+        clearSelection();
     };
 
     function showWindow(data) {
@@ -281,6 +334,16 @@ document.addEventListener('DOMContentLoaded', () => {
             contentDiv.appendChild(frame);
         }
         win.style.display = 'flex';
+        // First open: place the window in pixels (no translate(-50%)), so the native
+        // resize corner grows the window normally instead of in both directions.
+        if (!win.dataset.placed) {
+            win.style.left = Math.max(10, (window.innerWidth - win.offsetWidth) / 2) + 'px';
+            win.style.top = Math.max(10, (window.innerHeight - win.offsetHeight) / 2) + 'px';
+            win.dataset.placed = '1';
+        }
+        win.style.animation = 'none';
+        void win.offsetWidth;
+        win.style.animation = '';
     }
 
     // --- UNIVERSAL DRAG FUNCTION (FIXED) ---
@@ -338,7 +401,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (inputMod && inputHead) makeDraggable(inputMod, inputHead);
 
     const resizer = document.getElementById('resizer');
-    const menu = document.getElementById('menu-panel');
     let isResizing = false;
     if(resizer) {
         resizer.onmousedown = () => { isResizing = true; document.body.style.cursor = 'ew-resize'; };
