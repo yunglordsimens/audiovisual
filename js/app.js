@@ -1,4 +1,4 @@
-/* js/app.js v8.1 - Tree lines + path highlight, calm graph, window resize fix */
+/* js/app.js v8.2 - per-window CONTROL_MODULE built from each showcase's manifest */
 
 // --- GLOBALS ---
 let selectedId = null;
@@ -319,19 +319,31 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('win-close').onclick = () => {
         win.style.display = 'none';
         bgFrame.src = "about:blank";
+        unmountLocal();
         clearSelection();
     };
 
     function showWindow(data) {
         document.getElementById('win-title').textContent = data.label;
         const contentDiv = document.getElementById('win-content');
+        unmountLocal();
         contentDiv.innerHTML = `<div class="win-desc">${data.description}</div>`;
         if (data.url) {
+            // [ demo | control module ]  — the module stays hidden until the showcase sends a manifest
+            const body = document.createElement('div');
+            body.className = 'win-body';
+            const stage = document.createElement('div');
+            stage.className = 'win-stage';
             const frame = document.createElement('iframe');
             frame.className = 'win-iframe';
             frame.src = data.url;
             frame.onload = () => broadcastState();
-            contentDiv.appendChild(frame);
+            stage.appendChild(frame);
+            const ctl = document.createElement('aside');
+            ctl.className = 'win-ctl';
+            ctl.hidden = true;
+            body.append(stage, ctl);
+            contentDiv.appendChild(body);
         }
         win.style.display = 'flex';
         // First open: place the window in pixels (no translate(-50%)), so the native
@@ -409,4 +421,181 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         window.addEventListener('mouseup', () => { isResizing = false; });
     }
+
+    // ==========================================
+    // G. LOCAL CONTROL MODULE
+    // Each showcase describes its own parameters (js/lab-bridge.js -> MANIFEST).
+    // The window turns that description into controls. Nothing here is showcase-specific.
+    // ==========================================
+    const deckEl = document.getElementById('control-deck');
+    if (deckEl && !deckEl.querySelector('.deck-note')) {
+        const note = document.createElement('div');
+        note.className = 'deck-note';
+        note.textContent = ':: PARAMS -> IN WINDOW';
+        deckEl.querySelector('.deck-header').after(note);
+    }
+    const LS_KEY = 'tlab.params.';
+    let local = null; // { manifest, values, url, preset, code }
+
+    function defaultsOf(m) {
+        const v = {};
+        m.params.forEach(p => { v[p.id] = p.value; });
+        return v;
+    }
+    function startValues(m) {
+        const v = defaultsOf(m);
+        if (m.initial && m.presets && m.presets[m.initial]) Object.assign(v, m.presets[m.initial]);
+        return v;
+    }
+    function loadSaved(url) {
+        try { return JSON.parse(localStorage.getItem(LS_KEY + url) || 'null'); } catch (e) { return null; }
+    }
+    let saveTimer = null;
+    function scheduleSave() {
+        clearTimeout(saveTimer);
+        saveTimer = setTimeout(() => {
+            if (!local) return;
+            try { localStorage.setItem(LS_KEY + local.url, JSON.stringify(local.values)); } catch (e) {}
+        }, 300);
+    }
+    function pushParams() {
+        if (!local) return;
+        const msg = { type: 'SET_PARAMS', values: local.values };
+        const wf = document.querySelector('.win-iframe');
+        [wf && wf.contentWindow, bgFrame.contentWindow].forEach(w => { try { if (w) w.postMessage(msg, '*'); } catch (e) {} });
+    }
+    let pushRaf = 0;
+    function schedulePush() {
+        if (pushRaf) return;
+        pushRaf = requestAnimationFrame(() => { pushRaf = 0; pushParams(); });
+    }
+
+    window.addEventListener('message', (e) => {
+        const d = e.data;
+        if (!d || typeof d !== 'object') return;
+        const wf = document.querySelector('.win-iframe');
+        const fromWin = wf && e.source === wf.contentWindow;
+        if (d.type === 'MANIFEST') {
+            if (fromWin) mountLocal(d.manifest);
+            else if (e.source === bgFrame.contentWindow) pushParams(); // keep the blurred background in sync
+        } else if (d.type === 'CODE' && fromWin && local) {
+            local.code = String(d.text || '');
+            const pre = document.querySelector('.ctl-code');
+            if (pre) pre.textContent = local.code;
+        }
+    });
+
+    function mountLocal(m) {
+        if (!m || !Array.isArray(m.params) || !Array.isArray(m.groups)) return;
+        const url = (nodeMap[selectedId] && nodeMap[selectedId].url) || 'unknown';
+        const values = startValues(m);
+        const saved = loadSaved(url);
+        let preset = saved ? null : (m.initial || null);
+        if (saved) m.params.forEach(p => { if (p.id in saved) values[p.id] = saved[p.id]; });
+        local = { manifest: m, values, url, preset, code: '' };
+        if (deckEl) deckEl.classList.add('has-local');
+        renderLocal();
+        pushParams();
+    }
+    function unmountLocal() {
+        local = null;
+        if (deckEl) deckEl.classList.remove('has-local');
+    }
+
+    const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    function fmtVal(p, v) {
+        const step = p.step || 1;
+        const dec = step >= 1 ? 0 : String(step).split('.')[1].length;
+        return (+v).toFixed(dec) + (p.unit || '');
+    }
+    function visible(p, v) {
+        return !p.when || p.when.in.includes(v[p.when.param]);
+    }
+    function paramHTML(p, val) {
+        const id = esc(p.id), label = esc(p.label || p.id);
+        if (p.type === 'range') {
+            return `<label class="ctl-p"><span class="ctl-l">${label}<output data-out="${id}">${fmtVal(p, val)}</output></span>
+                <input type="range" data-p="${id}" min="${p.min}" max="${p.max}" step="${p.step}" value="${val}"></label>`;
+        }
+        if (p.type === 'select') {
+            return `<div class="ctl-p"><span class="ctl-l">${label}</span><div class="ctl-opts">${
+                p.options.map(o => `<button type="button" class="ctl-chip ${o === val ? 'on' : ''}" data-p="${id}" data-v="${esc(o)}">${esc(o)}</button>`).join('')
+            }</div></div>`;
+        }
+        if (p.type === 'color') {
+            return `<label class="ctl-p ctl-row"><span class="ctl-l">${label}</span>
+                <span class="ctl-color"><output data-out="${id}">${esc(val)}</output><input type="color" data-p="${id}" value="${esc(val)}"></span></label>`;
+        }
+        return '';
+    }
+    function renderLocal() {
+        const aside = document.querySelector('.win-ctl');
+        if (!aside || !local) return;
+        const { manifest: m, values: v } = local;
+        const keepScroll = aside.scrollTop;
+        let h = `<div class="ctl-head">:: CONTROL_MODULE</div>`;
+        if (m.presets) {
+            h += `<div class="ctl-sec">PRESETS</div><div class="ctl-presets">${
+                Object.keys(m.presets).map(k => `<button type="button" class="ctl-chip ${local.preset === k ? 'on' : ''}" data-preset="${esc(k)}">${esc(k)}</button>`).join('')
+            }<button type="button" class="ctl-chip ghost" data-preset="__reset">RESET</button></div>`;
+        }
+        m.groups.forEach(g => {
+            const on = g.toggle ? !!v[g.toggle] : true;
+            h += `<div class="ctl-group ${on ? 'on' : 'off'}"><div class="ctl-ghead">`;
+            h += g.toggle ? `<button type="button" class="ctl-tog ${on ? 'on' : ''}" data-toggle="${esc(g.toggle)}" aria-pressed="${on}">${on ? 'ON' : 'OFF'}</button>` : `<span class="ctl-fixed"></span>`;
+            h += `<span class="ctl-gname">${esc(g.label)}</span></div>`;
+            if (on) {
+                h += `<div class="ctl-gbody">`;
+                m.params.filter(p => p.group === g.id && p.id !== g.toggle && visible(p, v)).forEach(p => { h += paramHTML(p, v[p.id]); });
+                h += `</div>`;
+            }
+            h += `</div>`;
+        });
+        h += `<div class="ctl-sec ctl-codehead">:: CODE <span>LIVE</span></div><pre class="ctl-code"></pre>`;
+        aside.innerHTML = h;
+        aside.querySelector('.ctl-code').textContent = local.code;
+        aside.hidden = false;
+        aside.scrollTop = keepScroll;
+    }
+    function changed(rerender) {
+        if (rerender) renderLocal();
+        schedulePush();
+        scheduleSave();
+    }
+    function dropPreset() {
+        if (!local || !local.preset) return;
+        local.preset = null;
+        document.querySelectorAll('.win-ctl [data-preset].on').forEach(b => b.classList.remove('on'));
+    }
+
+    const winContent = document.getElementById('win-content');
+    winContent.addEventListener('input', (e) => {
+        const el = e.target;
+        if (!local || !el.dataset || !el.dataset.p) return;
+        const p = local.manifest.params.find(x => x.id === el.dataset.p);
+        if (!p) return;
+        local.values[p.id] = p.type === 'range' ? +el.value : el.value;
+        const out = winContent.querySelector(`[data-out="${CSS.escape(p.id)}"]`);
+        if (out) out.textContent = p.type === 'range' ? fmtVal(p, el.value) : el.value;
+        dropPreset();
+        changed(false);
+    });
+    winContent.addEventListener('click', (e) => {
+        const b = e.target.closest('button');
+        if (!b || !local) return;
+        if (b.dataset.preset) {
+            const k = b.dataset.preset, m = local.manifest;
+            local.values = k === '__reset' ? defaultsOf(m) : Object.assign(defaultsOf(m), m.presets[k]);
+            local.preset = k === '__reset' ? null : k;
+            changed(true);
+        } else if (b.dataset.toggle) {
+            local.values[b.dataset.toggle] = !local.values[b.dataset.toggle];
+            dropPreset();
+            changed(true);
+        } else if (b.dataset.p && b.dataset.v !== undefined) {
+            local.values[b.dataset.p] = b.dataset.v;
+            dropPreset();
+            changed(true);
+        }
+    });
 });

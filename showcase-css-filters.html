@@ -1,293 +1,282 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>CSS Filter Visualizer</title>
-    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --hue: 180;
-            --val-a: 0.5; /* Speed / Frequency */
-            --val-b: 0.5; /* Intensity / Size */
-            --val-c: 0.1; /* Chaos / Distortion */
-            
-            --primary: hsl(var(--hue), 100%, 50%);
-            --bg: #050505;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CSS Effects — layers</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@700;900&display=swap" rel="stylesheet">
+<style>
+/* Every effect is a layer driven by CSS custom properties.
+   Layers can be combined freely; JS only writes variables and on/off classes. */
+:root {
+    --size: 12vw; --ls: 0.02em; --skew: 0deg;
+    --a: #00f0ff; --b: #ff00c8; --stroke: 2px; --angle: 135deg; --stripe: 10px; --flow-dur: 12s;
+    --contrast: 18; --breath: 0.1em; --breath-dur: 5s;
+    --jit: 2px; --jit-dur: 0.1s;
+    --fl-dur: 1s; --fl-min: 0.3;
+    --shift: 6px; --sl-dur: 2s;
+    --m-op: 0.4; --m-gap: 0px;
+    --scan-op: 0.5;
+    --fx: none; --mfx: none;
+}
+html, body { margin: 0; height: 100%; overflow: hidden; background: transparent; font-family: 'Rajdhani', 'Arial Narrow', sans-serif; color: #fff; }
 
-        body {
-            margin: 0; overflow: hidden;
-            background: transparent;
-            font-family: 'Rajdhani', sans-serif;
-            color: white;
-            height: 100vh;
-            display: flex; flex-direction: column;
-        }
+.goo { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.shake { position: relative; }
+.type { font-size: var(--size); font-weight: 900; line-height: 1; letter-spacing: var(--ls); white-space: nowrap; text-align: center; user-select: none; }
+.case-upper .type { text-transform: uppercase; }
+.hero { position: relative; display: inline-block; transform: skewX(var(--skew)); filter: var(--fx); }
+.ink { display: inline-block; }
 
-        /* --- VIEWPORT (Экран просмотра) --- */
-        .viewport {
-            flex: 1;
-            display: flex; justify-content: center; align-items: center;
-            position: relative;
-            overflow: hidden;
-        }
+/* FILL */
+.fill-solid .ink { color: var(--a); }
+.fill-outline .ink { color: transparent; -webkit-text-stroke: var(--stroke) var(--a); }
+.fill-gradient .ink {
+    color: transparent; background: linear-gradient(var(--angle), var(--a), var(--b));
+    background-size: 200% 200%; -webkit-background-clip: text; background-clip: text;
+    animation: flow var(--flow-dur) ease-in-out infinite alternate;
+}
+.fill-stripes .ink {
+    color: transparent;
+    background: repeating-linear-gradient(var(--angle), var(--a) 0 var(--stripe), var(--b) var(--stripe) calc(var(--stripe) * 2));
+    background-size: 200% 200%; -webkit-background-clip: text; background-clip: text;
+    animation: flow var(--flow-dur) linear infinite;
+}
+@keyframes flow { from { background-position: 0% 0%; } to { background-position: 100% 100%; } }
 
-        /* Текст внутри экрана */
-        .hero-text {
-            font-size: 12vw; /* Адаптивный огромный размер */
-            font-weight: 900;
-            text-transform: uppercase;
-            white-space: nowrap;
-            position: relative;
-            transition: all 0.3s ease;
-            cursor: default;
-            user-select: none;
-        }
+/* LIQUID: blur on the letters + contrast on a solid backdrop = gooey merge */
+.fx-liquid .goo { background: #050508; filter: contrast(var(--contrast)); }
+.fx-liquid .type { animation: breath var(--breath-dur) ease-in-out infinite; }
+@keyframes breath { 0%, 100% { letter-spacing: var(--ls); } 50% { letter-spacing: calc(var(--ls) - var(--breath)); } }
 
-        /* --- SELECTOR BAR (Нижняя панель) --- */
-        .selector-bar {
-            height: 60px;
-            display: flex;
-            justify-content: center;
-            gap: 5px;
-            padding: 10px;
-            background: rgba(0,0,0,0.8);
-            border-top: 1px solid var(--primary);
-            backdrop-filter: blur(5px);
-        }
+/* RGB: the colour split is in --fx (drop-shadows); this is the shake */
+.fx-rgb .shake { animation: jit var(--jit-dur) steps(1) infinite; }
+@keyframes jit {
+    0% { transform: translate(0, 0); } 25% { transform: translate(var(--jit), var(--jit)); }
+    50% { transform: translate(calc(var(--jit) * -1), 0); } 75% { transform: translate(0, calc(var(--jit) * -1)); }
+}
 
-        .mode-btn {
-            background: transparent;
-            border: 1px solid #333;
-            color: #555;
-            font-family: 'Share Tech Mono', monospace;
-            font-size: 12px;
-            padding: 0 15px;
-            cursor: pointer;
-            transition: all 0.2s;
-            clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
-        }
+/* FLICKER */
+.fx-flicker .shake { animation-name: flicker; animation-duration: var(--fl-dur); animation-iteration-count: infinite; }
+.fx-flicker.fx-rgb .shake { animation: jit var(--jit-dur) steps(1) infinite, flicker var(--fl-dur) infinite; }
+@keyframes flicker { 0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% { opacity: 1; } 20%, 24%, 55% { opacity: var(--fl-min); } }
 
-        .mode-btn:hover {
-            border-color: var(--primary);
-            color: var(--primary);
-        }
+/* SLICE: two clipped copies of the word slide sideways */
+.fx-slice .hero::before, .fx-slice .hero::after {
+    content: attr(data-text); position: absolute; inset: 0; color: var(--a); pointer-events: none;
+}
+.fill-outline.fx-slice .hero::before, .fill-outline.fx-slice .hero::after { color: transparent; -webkit-text-stroke: var(--stroke) var(--a); }
+.fx-slice .hero::before { text-shadow: -2px 0 #ff00c1; clip-path: inset(0 0 60% 0); animation: gTop var(--sl-dur) infinite linear alternate-reverse; }
+.fx-slice .hero::after { text-shadow: 2px 0 #00fff9; clip-path: inset(40% 0 0 0); animation: gBot calc(var(--sl-dur) * 0.75) infinite linear alternate-reverse; }
+@keyframes gTop {
+    0% { clip-path: inset(10% 0 80% 0); transform: translate(calc(var(--shift) * -1), 0); }
+    20% { clip-path: inset(80% 0 5% 0); transform: translate(var(--shift), 0); }
+    100% { clip-path: inset(40% 0 40% 0); transform: translate(calc(var(--shift) * -0.4), 0); }
+}
+@keyframes gBot {
+    0% { clip-path: inset(70% 0 20% 0); transform: translate(var(--shift), 0); }
+    100% { clip-path: inset(10% 0 60% 0); transform: translate(calc(var(--shift) * -1), 0); }
+}
 
-        .mode-btn.active {
-            background: var(--primary);
-            color: #000;
-            border-color: var(--primary);
-            font-weight: bold;
-            box-shadow: 0 0 15px var(--primary);
-        }
+/* MIRROR */
+.mirror {
+    display: none; position: absolute; left: 0; right: 0; top: 100%; margin-top: var(--m-gap);
+    transform: scaleY(-1) skewX(var(--skew)); opacity: var(--m-op); filter: var(--mfx);
+    -webkit-mask-image: linear-gradient(to bottom, transparent 15%, #000); mask-image: linear-gradient(to bottom, transparent 15%, #000);
+    pointer-events: none;
+}
+.fx-mirror .mirror { display: block; }
 
-        /* ================================
-           РЕЖИМЫ (MODES)
-           ================================ */
-
-        /* 1. LIQUID (Жидкий металл) */
-        /* A: Speed, B: Blur Amount */
-        .mode-liquid .hero-text {
-            color: #FFF;
-            /* Комбинация blur и contrast создает эффект "слипания" (gooey) */
-            filter: blur(calc(var(--val-b) * 15px + 2px)) contrast(calc(var(--val-b) * 10 + 10));
-            animation: liquidPulse calc(3s / (var(--val-a) + 0.2)) infinite ease-in-out;
-        }
-        .mode-liquid .hero-text::before {
-            content: attr(data-text); position: absolute; top:0; left:0;
-            color: var(--primary); transform: translate(5px, 5px); opacity: 0.5;
-            filter: blur(10px);
-        }
-        @keyframes liquidPulse {
-            0%, 100% { letter-spacing: normal; }
-            50% { letter-spacing: -10px; }
-        }
-
-
-        /* 2. RGB SHIFT (Хроматическая аберрация) */
-        /* A: Shake Speed, B: Shift Distance, C: Opacity/Noise */
-        .mode-rgb .hero-text {
-            color: white;
-            text-shadow: 
-                calc(var(--val-b) * -10px) 0 #FF0000, 
-                calc(var(--val-b) * 10px) 0 #0000FF;
-            animation: rgbShake calc(0.2s / (var(--val-a) + 0.1)) infinite;
-        }
-        @keyframes rgbShake {
-            0% { transform: translate(0, 0); }
-            25% { transform: translate(calc(var(--val-c) * 5px), calc(var(--val-c) * 5px)); }
-            50% { transform: translate(calc(var(--val-c) * -5px), 0); }
-            75% { transform: translate(0, calc(var(--val-c) * -5px)); }
-            100% { transform: translate(0, 0); }
-        }
-
-
-        /* 3. NEON HOLLOW (Неоновая обводка) */
-        /* A: Flicker Speed, B: Stroke Width, C: Glow Size */
-        .mode-neon .hero-text {
-            color: transparent;
-            -webkit-text-stroke: calc(var(--val-b) * 3px + 1px) var(--primary);
-            filter: drop-shadow(0 0 calc(var(--val-c) * 20px) var(--primary));
-            animation: neonFlicker calc(1s / (var(--val-a) + 0.1)) infinite;
-        }
-        @keyframes neonFlicker {
-            0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% { opacity: 1; }
-            20%, 24%, 55% { opacity: 0.3; }
-        }
-
-
-        /* 4. CYBER GLITCH (Разрезанный текст) */
-        /* A: Cycle Speed, B: Cut Size, C: Trigger Chance */
-        .mode-glitch .hero-text {
-            position: relative;
-            color: #FFF;
-        }
-        .mode-glitch .hero-text::before,
-        .mode-glitch .hero-text::after {
-            content: attr(data-text);
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: #000; /* Фейковый фон для перекрытия */
-        }
-        .mode-glitch .hero-text::before {
-            left: 2px; text-shadow: -1px 0 #ff00c1;
-            clip-path: inset(0 0 60% 0);
-            animation: glitchTop calc(2s / (var(--val-a) + 0.5)) infinite linear alternate-reverse;
-        }
-        .mode-glitch .hero-text::after {
-            left: -2px; text-shadow: -1px 0 #00fff9;
-            clip-path: inset(40% 0 0 0);
-            animation: glitchBot calc(1.5s / (var(--val-a) + 0.5)) infinite linear alternate-reverse;
-        }
-        @keyframes glitchTop {
-            0% { clip-path: inset(10% 0 80% 0); transform: translate(-5px,0); }
-            20% { clip-path: inset(80% 0 5% 0); transform: translate(5px,0); }
-            100% { clip-path: inset(40% 0 40% 0); transform: translate(-2px,0); }
-        }
-        @keyframes glitchBot {
-            0% { clip-path: inset(70% 0 20% 0); transform: translate(5px,0); }
-            100% { clip-path: inset(10% 0 60% 0); transform: translate(-5px,0); }
-        }
-
-
-        /* 5. VAPORWAVE (Ретро градиент и наклон) */
-        /* A: Skew Speed, B: Gradient Shift, C: Reflection Opacity */
-        .mode-vapor .hero-text {
-            background: linear-gradient(to bottom, #00FFFF, #FF00FF);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            transform: skew(calc(var(--val-a) * -30deg));
-            position: relative;
-        }
-        /* Отражение */
-        .mode-vapor .hero-text::after {
-            content: attr(data-text);
-            position: absolute;
-            left: 0; top: 80%;
-            transform: scaleY(-0.6) skew(calc(var(--val-a) * 30deg));
-            opacity: calc(var(--val-c) * 0.5);
-            background: linear-gradient(to top, rgba(255,0,255,0.8), transparent);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            filter: blur(2px);
-        }
-
-
-        /* 6. HAZARD (Полосы) */
-        /* A: Speed, B: Angle, C: Stripe Width */
-        .mode-hazard .hero-text {
-            color: transparent;
-            background-image: repeating-linear-gradient(
-                45deg,
-                #000,
-                #000 10px,
-                var(--primary) 10px,
-                var(--primary) calc(var(--val-c) * 20px + 10px)
-            );
-            -webkit-background-clip: text;
-            background-size: 200% 200%;
-            animation: hazardFlow calc(5s / (var(--val-a) + 0.1)) linear infinite;
-        }
-        @keyframes hazardFlow {
-            0% { background-position: 0% 50%; }
-            100% { background-position: 100% 50%; }
-        }
-
-        /* Scanlines overlay */
-        .scanlines {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%);
-            background-size: 100% 4px;
-            pointer-events: none; z-index: 10;
-        }
-
-    </style>
+/* SCREEN */
+.scan {
+    display: none; position: fixed; inset: 0; pointer-events: none; z-index: 10; opacity: var(--scan-op);
+    background: linear-gradient(rgba(0, 0, 0, 0) 50%, rgba(0, 0, 0, 0.55) 50%); background-size: 100% 4px;
+}
+.fx-scan .scan { display: block; }
+</style>
 </head>
-<body>
-    
-    <div class="scanlines"></div>
-
-    <div class="viewport" id="viewport">
-        <div class="wrapper mode-liquid" id="effect-wrapper">
-            <div class="hero-text" id="output" data-text="SYSTEM">SYSTEM</div>
+<body class="fill-solid case-upper">
+    <div class="goo">
+        <div class="shake">
+            <div class="type">
+                <div class="hero" id="hero" data-text="SYSTEM"><span class="ink" id="ink">SYSTEM</span></div>
+                <div class="mirror" aria-hidden="true"><span class="ink" id="mink">SYSTEM</span></div>
+            </div>
         </div>
     </div>
+    <div class="scan"></div>
 
-    <div class="selector-bar">
-        <button class="mode-btn active" onclick="setMode('mode-liquid', this)">LIQUID</button>
-        <button class="mode-btn" onclick="setMode('mode-rgb', this)">RGB_SHIFT</button>
-        <button class="mode-btn" onclick="setMode('mode-neon', this)">NEON</button>
-        <button class="mode-btn" onclick="setMode('mode-glitch', this)">GLITCH</button>
-        <button class="mode-btn" onclick="setMode('mode-vapor', this)">VAPOR</button>
-        <button class="mode-btn" onclick="setMode('mode-hazard', this)">HAZARD</button>
-    </div>
+<script src="js/lab-bridge.js"></script>
+<script>
+const MANIFEST = {
+    initial: 'NEON',
+    groups: [
+        { id: 'type', label: 'TYPE' },
+        { id: 'fill', label: 'FILL' },
+        { id: 'liquid', label: 'LIQUID', toggle: 'liquid.on' },
+        { id: 'rgb', label: 'RGB_SPLIT', toggle: 'rgb.on' },
+        { id: 'glow', label: 'GLOW', toggle: 'glow.on' },
+        { id: 'flicker', label: 'FLICKER', toggle: 'flicker.on' },
+        { id: 'slice', label: 'SLICE', toggle: 'slice.on' },
+        { id: 'mirror', label: 'MIRROR', toggle: 'mirror.on' },
+        { id: 'scan', label: 'SCANLINES', toggle: 'scan.on' }
+    ],
+    params: [
+        { id: 'type.size', group: 'type', label: 'SIZE', type: 'range', min: 10, max: 120, step: 1, value: 85, unit: '%' },
+        { id: 'type.spacing', group: 'type', label: 'TRACKING', type: 'range', min: -0.1, max: 0.6, step: 0.01, value: 0.02, unit: 'em' },
+        { id: 'type.skew', group: 'type', label: 'SKEW', type: 'range', min: -40, max: 40, step: 1, value: 0, unit: '°' },
+        { id: 'type.case', group: 'type', label: 'CASE', type: 'select', options: ['UPPER', 'AS_TYPED'], value: 'UPPER' },
 
-    <script>
-        const textEl = document.getElementById('output');
-        const wrapperEl = document.getElementById('effect-wrapper');
-        const btns = document.querySelectorAll('.mode-btn');
+        { id: 'fill.mode', group: 'fill', label: 'MODE', type: 'select', options: ['SOLID', 'OUTLINE', 'GRADIENT', 'STRIPES'], value: 'SOLID' },
+        { id: 'fill.a', group: 'fill', label: 'COLOR_A', type: 'color', value: '#00f0ff' },
+        { id: 'fill.b', group: 'fill', label: 'COLOR_B', type: 'color', value: '#ff00c8', when: { param: 'fill.mode', in: ['GRADIENT', 'STRIPES'] } },
+        { id: 'fill.stroke', group: 'fill', label: 'STROKE', type: 'range', min: 0.5, max: 8, step: 0.1, value: 2, unit: 'px', when: { param: 'fill.mode', in: ['OUTLINE'] } },
+        { id: 'fill.angle', group: 'fill', label: 'ANGLE', type: 'range', min: 0, max: 360, step: 1, value: 135, unit: '°', when: { param: 'fill.mode', in: ['GRADIENT', 'STRIPES'] } },
+        { id: 'fill.stripe', group: 'fill', label: 'STRIPE', type: 'range', min: 2, max: 60, step: 1, value: 10, unit: 'px', when: { param: 'fill.mode', in: ['STRIPES'] } },
+        { id: 'fill.flow', group: 'fill', label: 'FLOW', type: 'range', min: 0, max: 4, step: 0.05, value: 0.5, unit: '×', when: { param: 'fill.mode', in: ['GRADIENT', 'STRIPES'] } },
 
-        // Функция переключения режима (вызывается по клику на кнопки внизу)
-        window.setMode = function(modeClass, btn) {
-            // Сброс классов
-            wrapperEl.className = 'wrapper ' + modeClass;
-            
-            // Обновляем UI кнопок
-            btns.forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-        }
+        { id: 'liquid.on', group: 'liquid', type: 'toggle', value: false },
+        { id: 'liquid.blur', group: 'liquid', label: 'BLUR', type: 'range', min: 0, max: 20, step: 0.1, value: 8, unit: 'px' },
+        { id: 'liquid.contrast', group: 'liquid', label: 'CONTRAST', type: 'range', min: 1, max: 40, step: 0.5, value: 18, unit: '×' },
+        { id: 'liquid.breath', group: 'liquid', label: 'BREATH', type: 'range', min: 0, max: 0.4, step: 0.01, value: 0.1, unit: 'em' },
+        { id: 'liquid.speed', group: 'liquid', label: 'SPEED', type: 'range', min: 0, max: 3, step: 0.05, value: 0.6, unit: '×' },
 
-        // Слушатель событий от Главного Окна (index.html)
-        window.addEventListener('message', (event) => {
-            if (event.data.type === 'UPDATE_STATE') {
-                const state = event.data;
-                updateVisuals(state);
-            }
-        });
+        { id: 'rgb.on', group: 'rgb', type: 'toggle', value: false },
+        { id: 'rgb.offset', group: 'rgb', label: 'OFFSET', type: 'range', min: 0, max: 30, step: 0.5, value: 6, unit: 'px' },
+        { id: 'rgb.jitter', group: 'rgb', label: 'SHAKE', type: 'range', min: 0, max: 12, step: 0.5, value: 2, unit: 'px' },
+        { id: 'rgb.speed', group: 'rgb', label: 'SPEED', type: 'range', min: 0, max: 10, step: 0.1, value: 4, unit: '×' },
 
-        function updateVisuals(state) {
-            const root = document.documentElement;
-            
-            // 1. Обновляем текст
-            textEl.textContent = state.text;
-            textEl.setAttribute('data-text', state.text); // Для глитч эффектов
+        { id: 'glow.on', group: 'glow', type: 'toggle', value: false },
+        { id: 'glow.radius', group: 'glow', label: 'RADIUS', type: 'range', min: 0, max: 60, step: 1, value: 18, unit: 'px' },
+        { id: 'glow.layers', group: 'glow', label: 'STRENGTH', type: 'range', min: 1, max: 3, step: 1, value: 1, unit: '×' },
 
-            // 2. Обновляем цвет
-            root.style.setProperty('--hue', state.hue);
+        { id: 'flicker.on', group: 'flicker', type: 'toggle', value: false },
+        { id: 'flicker.speed', group: 'flicker', label: 'SPEED', type: 'range', min: 0, max: 4, step: 0.05, value: 1, unit: '×' },
+        { id: 'flicker.depth', group: 'flicker', label: 'DEPTH', type: 'range', min: 0, max: 1, step: 0.01, value: 0.7, unit: '' },
 
-            // 3. Обновляем параметры физики
-            root.style.setProperty('--val-a', state.params.a); // 0.0 - 1.0
-            root.style.setProperty('--val-b', state.params.b);
-            root.style.setProperty('--val-c', state.params.c);
-        }
+        { id: 'slice.on', group: 'slice', type: 'toggle', value: false },
+        { id: 'slice.shift', group: 'slice', label: 'SHIFT', type: 'range', min: 0, max: 40, step: 0.5, value: 6, unit: 'px' },
+        { id: 'slice.speed', group: 'slice', label: 'SPEED', type: 'range', min: 0, max: 4, step: 0.05, value: 1, unit: '×' },
 
-        // Инициализация (если открыто отдельно)
-        if (window.self === window.top) {
-            updateVisuals({
-                text: "STANDALONE",
-                hue: 180,
-                params: { a: 0.5, b: 0.5, c: 0.1 }
-            });
-        }
-    </script>
+        { id: 'mirror.on', group: 'mirror', type: 'toggle', value: false },
+        { id: 'mirror.opacity', group: 'mirror', label: 'OPACITY', type: 'range', min: 0, max: 1, step: 0.01, value: 0.4, unit: '' },
+        { id: 'mirror.gap', group: 'mirror', label: 'GAP', type: 'range', min: -40, max: 60, step: 1, value: 0, unit: 'px' },
+        { id: 'mirror.blur', group: 'mirror', label: 'BLUR', type: 'range', min: 0, max: 10, step: 0.1, value: 2, unit: 'px' },
+
+        { id: 'scan.on', group: 'scan', type: 'toggle', value: true },
+        { id: 'scan.opacity', group: 'scan', label: 'OPACITY', type: 'range', min: 0, max: 1, step: 0.01, value: 0.5, unit: '' }
+    ],
+    // the six old modes, now just starting points for the sliders
+    presets: {
+        LIQUID:    { 'fill.mode': 'SOLID', 'fill.a': '#ffffff', 'liquid.on': true, 'liquid.blur': 8, 'liquid.contrast': 18, 'liquid.breath': 0.12, 'liquid.speed': 0.6 },
+        RGB_SHIFT: { 'fill.mode': 'SOLID', 'fill.a': '#ffffff', 'rgb.on': true, 'rgb.offset': 8, 'rgb.jitter': 2, 'rgb.speed': 5 },
+        NEON:      { 'fill.mode': 'OUTLINE', 'fill.a': '#00f0ff', 'fill.stroke': 2, 'glow.on': true, 'glow.radius': 18, 'glow.layers': 2, 'flicker.on': true, 'flicker.speed': 1, 'flicker.depth': 0.7 },
+        GLITCH:    { 'fill.mode': 'SOLID', 'fill.a': '#ffffff', 'slice.on': true, 'slice.shift': 6, 'slice.speed': 1.5 },
+        VAPOR:     { 'fill.mode': 'GRADIENT', 'fill.a': '#00ffff', 'fill.b': '#ff00ff', 'fill.angle': 180, 'fill.flow': 0.3, 'type.skew': -14, 'mirror.on': true, 'mirror.opacity': 0.45, 'mirror.blur': 2 },
+        HAZARD:    { 'fill.mode': 'STRIPES', 'fill.a': '#ffd400', 'fill.b': '#000000', 'fill.angle': 45, 'fill.stripe': 10, 'fill.flow': 1 },
+        NEON_GLITCH: { 'fill.mode': 'OUTLINE', 'fill.a': '#ff1f6b', 'fill.stroke': 1.5, 'glow.on': true, 'glow.radius': 14, 'glow.layers': 2, 'slice.on': true, 'slice.shift': 10, 'slice.speed': 2, 'rgb.on': true, 'rgb.offset': 3, 'rgb.jitter': 1, 'rgb.speed': 6 }
+    }
+};
+
+const hero = document.getElementById('hero');
+const ink = document.getElementById('ink');
+const mink = document.getElementById('mink');
+const R = document.documentElement.style;
+const set = (k, v) => R.setProperty(k, v);
+const dur = (base, speed) => speed <= 0.001 ? '100000s' : (base / speed).toFixed(3) + 's';
+const n = (x) => +(+x).toFixed(3);
+
+let current = null;
+function applyText(s) {
+    const t = (s.text || 'SYSTEM');
+    ink.textContent = t; mink.textContent = t; hero.setAttribute('data-text', t);
+    fit();
+}
+
+// SIZE is "% of the space the word can take", so long words never run out of the window
+let fittedPx = 100;
+function fit() {
+    const pct = current ? current['type.size'] / 100 : 0.85;
+    set('--size', '100px');
+    const w = Math.max(1, ink.offsetWidth);
+    fittedPx = Math.max(8, Math.min(window.innerHeight * 0.55, (window.innerWidth * 0.92) / (w / 100)) * pct);
+    set('--size', fittedPx.toFixed(1) + 'px');
+}
+window.addEventListener('resize', () => { fit(); if (current) LabBridge.sendCode(cssFor(current, filterList(current))); });
+
+function applyValues(v) {
+    current = v;
+    set('--ls', v['type.spacing'] + 'em');
+    set('--skew', v['type.skew'] + 'deg');
+    set('--a', v['fill.a']); set('--b', v['fill.b']);
+    set('--stroke', v['fill.stroke'] + 'px');
+    set('--angle', v['fill.angle'] + 'deg');
+    set('--stripe', v['fill.stripe'] + 'px');
+    set('--flow-dur', dur(6, v['fill.flow']));
+    set('--contrast', v['liquid.contrast']);
+    set('--breath', v['liquid.breath'] + 'em');
+    set('--breath-dur', dur(3, v['liquid.speed']));
+    set('--jit', v['rgb.jitter'] + 'px');
+    set('--jit-dur', dur(0.4, v['rgb.speed']));
+    set('--fl-dur', dur(1, v['flicker.speed']));
+    set('--fl-min', 1 - v['flicker.depth']);
+    set('--shift', v['slice.shift'] + 'px');
+    set('--sl-dur', dur(2, v['slice.speed']));
+    set('--m-op', v['mirror.opacity']);
+    set('--m-gap', v['mirror.gap'] + 'px');
+    set('--scan-op', v['scan.opacity']);
+
+    const f = filterList(v);
+    set('--fx', f.length ? f.join(' ') : 'none');
+    const mf = f.slice(); if (v['mirror.blur'] > 0) mf.push(`blur(${n(v['mirror.blur'])}px)`);
+    set('--mfx', mf.length ? mf.join(' ') : 'none');
+
+    const cls = ['fill-' + String(v['fill.mode']).toLowerCase()];
+    if (v['type.case'] === 'UPPER') cls.push('case-upper');
+    ['liquid', 'rgb', 'flicker', 'slice', 'mirror', 'scan'].forEach(k => { if (v[k + '.on']) cls.push('fx-' + k); });
+    document.body.className = cls.join(' ');
+    fit();
+
+    LabBridge.sendCode(cssFor(v, f));
+}
+
+function filterList(v) {
+    const f = [];
+    if (v['rgb.on'] && v['rgb.offset'] > 0) {
+        const o = n(v['rgb.offset']);
+        f.push(`drop-shadow(${-o}px 0 0 #ff0033)`, `drop-shadow(${o}px 0 0 #0044ff)`);
+    }
+    if (v['glow.on'] && v['glow.radius'] > 0) {
+        for (let i = 0; i < v['glow.layers']; i++) f.push(`drop-shadow(0 0 ${n(v['glow.radius'])}px ${v['fill.a']})`);
+    }
+    if (v['liquid.on'] && v['liquid.blur'] > 0) f.push(`blur(${n(v['liquid.blur'])}px)`);
+    return f;
+}
+
+// The CSS panel under the control module: what the browser is actually doing right now.
+function cssFor(v, f) {
+    const L = [];
+    L.push(`.type {`, `  font: 900 ${Math.round(fittedPx)}px/1 Rajdhani;`, `  letter-spacing: ${n(v['type.spacing'])}em;`);
+    if (v['type.case'] === 'UPPER') L.push(`  text-transform: uppercase;`);
+    L.push(`}`, `.hero {`);
+    if (v['type.skew']) L.push(`  transform: skewX(${v['type.skew']}deg);`);
+    const m = v['fill.mode'];
+    if (m === 'SOLID') L.push(`  color: ${v['fill.a']};`);
+    if (m === 'OUTLINE') L.push(`  color: transparent;`, `  -webkit-text-stroke: ${n(v['fill.stroke'])}px ${v['fill.a']};`);
+    if (m === 'GRADIENT') L.push(`  background: linear-gradient(${v['fill.angle']}deg,`, `      ${v['fill.a']}, ${v['fill.b']});`, `  background-clip: text;`, `  color: transparent;`);
+    if (m === 'STRIPES') L.push(`  background: repeating-linear-gradient(${v['fill.angle']}deg,`, `      ${v['fill.a']} 0 ${v['fill.stripe']}px,`, `      ${v['fill.b']} ${v['fill.stripe']}px ${v['fill.stripe'] * 2}px);`, `  background-clip: text;`, `  color: transparent;`);
+    if (f.length) { L.push(`  filter:`); f.forEach((x, i) => L.push(`    ${x}${i === f.length - 1 ? ';' : ''}`)); }
+    L.push(`}`);
+    if (v['liquid.on']) L.push(``, `/* LIQUID: blur + contrast = goo */`, `.stage { background: #050508;`, `         filter: contrast(${n(v['liquid.contrast'])}); }`, `/* letter-spacing breathes -${n(v['liquid.breath'])}em every ${dur(3, v['liquid.speed'])} */`);
+    if (v['rgb.on']) L.push(``, `/* RGB: red/blue drop-shadows above,`, `   shake ±${n(v['rgb.jitter'])}px every ${dur(0.4, v['rgb.speed'])} */`);
+    if (v['flicker.on']) L.push(``, `/* FLICKER: opacity drops to ${n(1 - v['flicker.depth'])}`, `   three times every ${dur(1, v['flicker.speed'])} */`);
+    if (v['slice.on']) L.push(``, `.hero::before, .hero::after {`, `  content: attr(data-text);`, `  clip-path: inset(10% 0 80% 0); /* animated */`, `  transform: translateX(±${n(v['slice.shift'])}px);`, `}`);
+    if (v['mirror.on']) L.push(``, `.mirror {`, `  transform: scaleY(-1);`, `  opacity: ${n(v['mirror.opacity'])};`, `  mask-image: linear-gradient(transparent, #000);`, `}`);
+    return L.join('\n');
+}
+
+LabBridge.define(MANIFEST, { onState: applyText, onValues: applyValues });
+if (LabBridge.isStandalone()) applyText({ text: 'STANDALONE' });
+</script>
 </body>
 </html>
