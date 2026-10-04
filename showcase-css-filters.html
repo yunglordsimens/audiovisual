@@ -109,7 +109,6 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: transparent;
 <script src="js/lab-bridge.js"></script>
 <script>
 const MANIFEST = {
-    initial: 'NEON',
     groups: [
         { id: 'type', label: 'TYPE' },
         { id: 'fill', label: 'FILL' },
@@ -128,7 +127,7 @@ const MANIFEST = {
         { id: 'type.case', group: 'type', label: 'CASE', type: 'select', options: ['UPPER', 'AS_TYPED'], value: 'UPPER' },
 
         { id: 'fill.mode', group: 'fill', label: 'MODE', type: 'select', options: ['SOLID', 'OUTLINE', 'GRADIENT', 'STRIPES'], value: 'SOLID' },
-        { id: 'fill.a', group: 'fill', label: 'COLOR_A', type: 'color', value: '#00f0ff' },
+        { id: 'fill.a', group: 'fill', label: 'COLOR_A', type: 'color', value: '#ffffff' },
         { id: 'fill.b', group: 'fill', label: 'COLOR_B', type: 'color', value: '#ff00c8', when: { param: 'fill.mode', in: ['GRADIENT', 'STRIPES'] } },
         { id: 'fill.stroke', group: 'fill', label: 'STROKE', type: 'range', min: 0.5, max: 8, step: 0.1, value: 2, unit: 'px', when: { param: 'fill.mode', in: ['OUTLINE'] } },
         { id: 'fill.angle', group: 'fill', label: 'ANGLE', type: 'range', min: 0, max: 360, step: 1, value: 135, unit: '°', when: { param: 'fill.mode', in: ['GRADIENT', 'STRIPES'] } },
@@ -163,7 +162,7 @@ const MANIFEST = {
         { id: 'mirror.gap', group: 'mirror', label: 'GAP', type: 'range', min: -40, max: 60, step: 1, value: 0, unit: 'px' },
         { id: 'mirror.blur', group: 'mirror', label: 'BLUR', type: 'range', min: 0, max: 10, step: 0.1, value: 2, unit: 'px' },
 
-        { id: 'scan.on', group: 'scan', type: 'toggle', value: true },
+        { id: 'scan.on', group: 'scan', type: 'toggle', value: false },
         { id: 'scan.opacity', group: 'scan', label: 'OPACITY', type: 'range', min: 0, max: 1, step: 0.01, value: 0.5, unit: '' }
     ],
     // the six old modes, now just starting points for the sliders

@@ -1,4 +1,4 @@
-/* js/app.js v8.2 - per-window CONTROL_MODULE built from each showcase's manifest */
+/* js/app.js v8.3 - control module lives in the deck, code panel, overview windows, custom resize, mobile */
 
 // --- GLOBALS ---
 let selectedId = null;
@@ -208,7 +208,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const simulation = d3.forceSimulation(nodes)
         .force('link', d3.forceLink(links).id(d => d.id).distance(100))
         .force('charge', d3.forceManyBody().strength(-400))
-        .force('center', d3.forceCenter(width * 0.6, height * 0.5))
+        .force('center', d3.forceCenter(width * (width <= 760 ? 0.5 : 0.6), height * 0.5))
         .force('collide', d3.forceCollide().radius(d => d.w/2 + 10));
     
     const link = g.append('g').selectAll('line').data(links).enter().append('line').attr('stroke', '#00FFFF').attr('stroke-opacity', 0.4);
@@ -252,7 +252,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // keep the graph centred when the browser window changes size
     window.addEventListener('resize', () => {
-        simulation.force('center', d3.forceCenter(window.innerWidth * 0.6, window.innerHeight * 0.5));
+        simulation.force('center', d3.forceCenter(window.innerWidth * (window.innerWidth <= 760 ? 0.5 : 0.6), window.innerHeight * 0.5));
         simulation.alpha(0.1).restart();
     });
 
@@ -271,6 +271,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!nodeMap[id]) return;
         selectedId = id;
         updateVisuals(id, false);
+        document.body.classList.remove('menu-open'); // mobile: close the index drawer
         const data = nodeMap[id];
         labState.hue = (parseInt(id.replace(/\D/g,'') || '0') * 45) % 360;
         showWindow(data);
@@ -314,41 +315,69 @@ document.addEventListener('DOMContentLoaded', () => {
         markGraphPath(null, 'act');
     }
 
-    // --- F. WINDOW & DRAG LOGIC ---
+    // ==========================================
+    // F. WINDOW
+    // ==========================================
     const win = document.getElementById('window-container');
-    document.getElementById('win-close').onclick = () => {
+    const contentDiv = document.getElementById('win-content');
+    const isMobile = () => window.matchMedia('(max-width: 760px)').matches;
+
+    function closeWindow() {
         win.style.display = 'none';
         bgFrame.src = "about:blank";
         unmountLocal();
         clearSelection();
-    };
+    }
+    document.getElementById('win-close').onclick = closeWindow;
+
+    function countDemos(item) { return item.children ? item.children.reduce((s, c) => s + countDemos(c), 0) : (item.url ? 1 : 0); }
+    function countLeaves(item) { return item.children ? item.children.reduce((s, c) => s + countLeaves(c), 0) : 1; }
+    function tagFor(item) {
+        if (item.children) { const d = countDemos(item); return { text: `${d}/${countLeaves(item)} DEMO`, live: d > 0 }; }
+        return item.url ? { text: 'DEMO', live: true } : { text: 'SOON', live: false };
+    }
 
     function showWindow(data) {
         document.getElementById('win-title').textContent = data.label;
-        const contentDiv = document.getElementById('win-content');
         unmountLocal();
-        contentDiv.innerHTML = `<div class="win-desc">${data.description}</div>`;
+        contentDiv.innerHTML = '';
+        const desc = document.createElement('div');
+        desc.className = 'win-desc';
+        desc.textContent = data.description || '';
+        contentDiv.appendChild(desc);
+
         if (data.url) {
-            // [ demo | control module ]  — the module stays hidden until the showcase sends a manifest
-            const body = document.createElement('div');
-            body.className = 'win-body';
-            const stage = document.createElement('div');
-            stage.className = 'win-stage';
             const frame = document.createElement('iframe');
             frame.className = 'win-iframe';
             frame.src = data.url;
             frame.onload = () => broadcastState();
-            stage.appendChild(frame);
-            const ctl = document.createElement('aside');
-            ctl.className = 'win-ctl';
-            ctl.hidden = true;
-            body.append(stage, ctl);
-            contentDiv.appendChild(body);
+            contentDiv.appendChild(frame);
+        } else if (data.children) {
+            // section nodes (Basics, JS Libraries...) list what is inside instead of opening empty
+            const grid = document.createElement('div');
+            grid.className = 'win-overview';
+            data.children.forEach(k => {
+                const tag = tagFor(k);
+                const b = document.createElement('button');
+                b.type = 'button';
+                b.className = 'ov-item' + (tag.live ? ' live' : '');
+                b.dataset.goto = k.id;
+                b.innerHTML = '<span class="ov-top"><span class="ov-name"></span><span class="ov-tag"></span></span><span class="ov-desc"></span>';
+                b.querySelector('.ov-name').textContent = k.label;
+                b.querySelector('.ov-tag').textContent = tag.text;
+                b.querySelector('.ov-desc').textContent = k.description || '';
+                grid.appendChild(b);
+            });
+            contentDiv.appendChild(grid);
+        } else {
+            const empty = document.createElement('div');
+            empty.className = 'win-empty';
+            empty.innerHTML = '<div class="we-tag">NO DEMO YET</div><div>This node is on the map, the experiment is still to be built.</div>';
+            contentDiv.appendChild(empty);
         }
+
         win.style.display = 'flex';
-        // First open: place the window in pixels (no translate(-50%)), so the native
-        // resize corner grows the window normally instead of in both directions.
-        if (!win.dataset.placed) {
+        if (!win.dataset.placed && !isMobile()) {
             win.style.left = Math.max(10, (window.innerWidth - win.offsetWidth) / 2) + 'px';
             win.style.top = Math.max(10, (window.innerHeight - win.offsetHeight) / 2) + 'px';
             win.dataset.placed = '1';
@@ -357,106 +386,134 @@ document.addEventListener('DOMContentLoaded', () => {
         void win.offsetWidth;
         win.style.animation = '';
     }
+    contentDiv.addEventListener('click', (e) => {
+        const b = e.target.closest('[data-goto]');
+        if (b) handleClick(b.dataset.goto);
+    });
 
-    // --- UNIVERSAL DRAG FUNCTION (FIXED) ---
-    function makeDraggable(element, handle) {
-        let isDragging = false;
-        let startX, startY, initialLeft, initialTop;
-
-        handle.addEventListener('mousedown', (e) => {
-            isDragging = true;
-            startX = e.clientX;
-            startY = e.clientY;
-            
-            // 1. ВАЖНО: Отключаем CSS-анимацию
-            element.style.animation = 'none';
-            
-            // 2. Получаем точные координаты
-            const rect = element.getBoundingClientRect();
-            initialLeft = rect.left;
-            initialTop = rect.top;
-            
-            // 3. Переключаем на фиксированное позиционирование
-            element.style.position = 'fixed'; 
-            element.style.transform = 'none';
-            element.style.margin = '0';
-            
-            element.style.left = initialLeft + 'px';
-            element.style.top = initialTop + 'px';
-            
-            document.body.style.cursor = 'grabbing';
-        });
-
-        window.addEventListener('mousemove', (e) => {
-            if (!isDragging) return;
+    // --- DRAG (pointer events: mouse, pen and touch) ---
+    // Pointer capture + iframes switched off while dragging, so the cursor
+    // passing over a demo no longer "drops" the panel.
+    function makeDraggable(el, handle, opts = {}) {
+        if (!el || !handle) return;
+        let s = null;
+        handle.style.touchAction = 'none';
+        handle.addEventListener('pointerdown', (e) => {
+            if (e.button !== 0 || e.target.closest('button, input, select')) return;
+            if (opts.desktopOnly && isMobile()) return;
+            const r = el.getBoundingClientRect();
+            s = { x: e.clientX, y: e.clientY, l: r.left, t: r.top, id: e.pointerId };
+            Object.assign(el.style, { animation: 'none', position: 'fixed', transform: 'none', margin: '0', right: 'auto', bottom: 'auto', left: r.left + 'px', top: r.top + 'px' });
+            try { handle.setPointerCapture(e.pointerId); } catch (_) {}
+            document.body.classList.add('is-dragging');
             e.preventDefault();
-            const dx = e.clientX - startX;
-            const dy = e.clientY - startY;
-            element.style.left = (initialLeft + dx) + 'px';
-            element.style.top = (initialTop + dy) + 'px';
         });
-
-        window.addEventListener('mouseup', () => {
-            if (isDragging) {
-                isDragging = false;
-                document.body.style.cursor = 'default';
-            }
+        handle.addEventListener('pointermove', (e) => {
+            if (!s || e.pointerId !== s.id) return;
+            const l = Math.min(window.innerWidth - 60, Math.max(60 - el.offsetWidth, s.l + e.clientX - s.x));
+            const t = Math.min(window.innerHeight - 30, Math.max(0, s.t + e.clientY - s.y));
+            el.style.left = l + 'px';
+            el.style.top = t + 'px';
         });
+        const end = () => { if (s) { s = null; document.body.classList.remove('is-dragging'); } };
+        handle.addEventListener('pointerup', end);
+        handle.addEventListener('pointercancel', end);
     }
 
-    makeDraggable(document.getElementById('window-container'), document.getElementById('win-header'));
-    const deck = document.getElementById('control-deck');
-    const deckHeader = document.getElementById('deck-header');
-    if (deck && deckHeader) makeDraggable(deck, deckHeader);
-    const inputMod = document.getElementById('input-module');
-    const inputHead = document.getElementById('input-header');
-    if (inputMod && inputHead) makeDraggable(inputMod, inputHead);
+    // --- WINDOW RESIZE: own grip (the native corner was eaten by the iframe) ---
+    const grip = document.createElement('div');
+    grip.className = 'win-grip';
+    grip.title = 'Resize';
+    win.appendChild(grip);
+    let rs = null;
+    grip.addEventListener('pointerdown', (e) => {
+        if (isMobile()) return;
+        const r = win.getBoundingClientRect();
+        rs = { x: e.clientX, y: e.clientY, w: r.width, h: r.height, id: e.pointerId };
+        Object.assign(win.style, { animation: 'none', left: r.left + 'px', top: r.top + 'px' });
+        grip.setPointerCapture(e.pointerId);
+        document.body.classList.add('is-dragging');
+        e.preventDefault();
+        e.stopPropagation();
+    });
+    grip.addEventListener('pointermove', (e) => {
+        if (!rs || e.pointerId !== rs.id) return;
+        win.style.width = Math.max(340, rs.w + e.clientX - rs.x) + 'px';
+        win.style.height = Math.max(240, rs.h + e.clientY - rs.y) + 'px';
+    });
+    const endResize = () => { if (rs) { rs = null; document.body.classList.remove('is-dragging'); } };
+    grip.addEventListener('pointerup', endResize);
+    grip.addEventListener('pointercancel', endResize);
 
-    const resizer = document.getElementById('resizer');
-    let isResizing = false;
-    if(resizer) {
-        resizer.onmousedown = () => { isResizing = true; document.body.style.cursor = 'ew-resize'; };
-        window.addEventListener('mousemove', e => {
-            if (isResizing && e.clientX > 200 && e.clientX < 800) menu.style.width = e.clientX + 'px';
-        });
-        window.addEventListener('mouseup', () => { isResizing = false; });
-    }
-
-    // ==========================================
-    // G. LOCAL CONTROL MODULE
-    // Each showcase describes its own parameters (js/lab-bridge.js -> MANIFEST).
-    // The window turns that description into controls. Nothing here is showcase-specific.
-    // ==========================================
+    makeDraggable(win, document.getElementById('win-header'), { desktopOnly: true });
     const deckEl = document.getElementById('control-deck');
-    if (deckEl && !deckEl.querySelector('.deck-note')) {
-        const note = document.createElement('div');
-        note.className = 'deck-note';
-        note.textContent = ':: PARAMS -> IN WINDOW';
-        deckEl.querySelector('.deck-header').after(note);
-    }
-    const LS_KEY = 'tlab.params.';
-    let local = null; // { manifest, values, url, preset, code }
+    const deckHeader = document.getElementById('deck-header');
+    makeDraggable(deckEl, deckHeader, { desktopOnly: true });
+    makeDraggable(document.getElementById('input-module'), document.getElementById('input-header'), { desktopOnly: true });
 
-    function defaultsOf(m) {
-        const v = {};
-        m.params.forEach(p => { v[p.id] = p.value; });
-        return v;
+    // sidebar width
+    const resizer = document.getElementById('resizer');
+    if (resizer) {
+        let on = false;
+        resizer.style.touchAction = 'none';
+        resizer.addEventListener('pointerdown', (e) => { on = true; resizer.setPointerCapture(e.pointerId); document.body.classList.add('is-dragging'); });
+        resizer.addEventListener('pointermove', (e) => { if (on && e.clientX > 200 && e.clientX < 800) menu.style.width = e.clientX + 'px'; });
+        const stop = () => { on = false; document.body.classList.remove('is-dragging'); };
+        resizer.addEventListener('pointerup', stop);
+        resizer.addEventListener('pointercancel', stop);
     }
+
+    // --- MOBILE: index drawer + collapsible bottom deck ---
+    const menuToggle = document.createElement('button');
+    menuToggle.type = 'button';
+    menuToggle.className = 'menu-toggle';
+    menuToggle.textContent = '≡ INDEX';
+    menuToggle.onclick = () => document.body.classList.toggle('menu-open');
+    document.body.appendChild(menuToggle);
+    if (isMobile()) deckEl.classList.add('deck-min');
+    deckHeader.addEventListener('click', () => { if (isMobile()) deckEl.classList.toggle('deck-min'); });
+
+    // ==========================================
+    // G. CONTROL MODULE (one, in the deck)
+    // The open showcase describes its own parameters (js/lab-bridge.js -> MANIFEST),
+    // the deck turns that description into controls. Nothing here is showcase-specific.
+    // ==========================================
+    const deckLocal = document.createElement('div');
+    deckLocal.className = 'deck-local';
+    deckHeader.after(deckLocal);
+
+    const codePanel = document.createElement('div');
+    codePanel.className = 'code-panel';
+    codePanel.hidden = true;
+    codePanel.innerHTML = '<div class="code-header"><span>:: CODE <i>LIVE</i></span><button type="button" class="code-close" aria-label="Close code">×</button></div><pre class="code-body"></pre>';
+    document.body.appendChild(codePanel);
+    makeDraggable(codePanel, codePanel.querySelector('.code-header'), { desktopOnly: true });
+    const codeBody = codePanel.querySelector('.code-body');
+    let codeOpen = false;
+    try { codeOpen = localStorage.getItem('tlab.codeOpen') === '1'; } catch (e) {}
+    function setCodeOpen(v) {
+        codeOpen = v;
+        try { localStorage.setItem('tlab.codeOpen', v ? '1' : '0'); } catch (e) {}
+        codePanel.hidden = !(v && local);
+        const b = deckLocal.querySelector('[data-code-toggle]');
+        if (b) b.classList.toggle('on', v);
+    }
+    codePanel.querySelector('.code-close').onclick = () => setCodeOpen(false);
+
+    const LS_KEY = 'tlab.v3.params.';
+    let local = null; // { manifest, values, url, preset, collapsed:Set, title }
+
+    function defaultsOf(m) { const v = {}; m.params.forEach(p => { v[p.id] = p.value; }); return v; }
     function startValues(m) {
         const v = defaultsOf(m);
         if (m.initial && m.presets && m.presets[m.initial]) Object.assign(v, m.presets[m.initial]);
         return v;
     }
-    function loadSaved(url) {
-        try { return JSON.parse(localStorage.getItem(LS_KEY + url) || 'null'); } catch (e) { return null; }
-    }
+    function loadSaved(url) { try { return JSON.parse(localStorage.getItem(LS_KEY + url) || 'null'); } catch (e) { return null; } }
     let saveTimer = null;
     function scheduleSave() {
         clearTimeout(saveTimer);
-        saveTimer = setTimeout(() => {
-            if (!local) return;
-            try { localStorage.setItem(LS_KEY + local.url, JSON.stringify(local.values)); } catch (e) {}
-        }, 300);
+        saveTimer = setTimeout(() => { if (local) { try { localStorage.setItem(LS_KEY + local.url, JSON.stringify(local.values)); } catch (e) {} } }, 300);
     }
     function pushParams() {
         if (!local) return;
@@ -465,10 +522,7 @@ document.addEventListener('DOMContentLoaded', () => {
         [wf && wf.contentWindow, bgFrame.contentWindow].forEach(w => { try { if (w) w.postMessage(msg, '*'); } catch (e) {} });
     }
     let pushRaf = 0;
-    function schedulePush() {
-        if (pushRaf) return;
-        pushRaf = requestAnimationFrame(() => { pushRaf = 0; pushParams(); });
-    }
+    function schedulePush() { if (!pushRaf) pushRaf = requestAnimationFrame(() => { pushRaf = 0; pushParams(); }); }
 
     window.addEventListener('message', (e) => {
         const d = e.data;
@@ -478,28 +532,31 @@ document.addEventListener('DOMContentLoaded', () => {
         if (d.type === 'MANIFEST') {
             if (fromWin) mountLocal(d.manifest);
             else if (e.source === bgFrame.contentWindow) pushParams(); // keep the blurred background in sync
-        } else if (d.type === 'CODE' && fromWin && local) {
-            local.code = String(d.text || '');
-            const pre = document.querySelector('.ctl-code');
-            if (pre) pre.textContent = local.code;
+        } else if (d.type === 'CODE' && fromWin) {
+            codeBody.textContent = String(d.text || '');
         }
     });
 
     function mountLocal(m) {
         if (!m || !Array.isArray(m.params) || !Array.isArray(m.groups)) return;
-        const url = (nodeMap[selectedId] && nodeMap[selectedId].url) || 'unknown';
+        const node = nodeMap[selectedId] || {};
+        const url = node.url || 'unknown';
         const values = startValues(m);
         const saved = loadSaved(url);
-        let preset = saved ? null : (m.initial || null);
         if (saved) m.params.forEach(p => { if (p.id in saved) values[p.id] = saved[p.id]; });
-        local = { manifest: m, values, url, preset, code: '' };
-        if (deckEl) deckEl.classList.add('has-local');
+        local = { manifest: m, values, url, preset: saved ? null : (m.initial || null), collapsed: new Set(), title: node.label || '' };
+        deckEl.classList.add('has-local');
+        deckEl.classList.remove('deck-min');
         renderLocal();
+        setCodeOpen(codeOpen);
         pushParams();
     }
     function unmountLocal() {
         local = null;
-        if (deckEl) deckEl.classList.remove('has-local');
+        deckLocal.innerHTML = '';
+        deckEl.classList.remove('has-local');
+        codePanel.hidden = true;
+        codeBody.textContent = '';
     }
 
     const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -508,9 +565,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const dec = step >= 1 ? 0 : String(step).split('.')[1].length;
         return (+v).toFixed(dec) + (p.unit || '');
     }
-    function visible(p, v) {
-        return !p.when || p.when.in.includes(v[p.when.param]);
-    }
+    const visible = (p, v) => !p.when || p.when.in.includes(v[p.when.param]);
     function paramHTML(p, val) {
         const id = esc(p.id), label = esc(p.label || p.id);
         if (p.type === 'range') {
@@ -518,7 +573,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <input type="range" data-p="${id}" min="${p.min}" max="${p.max}" step="${p.step}" value="${val}"></label>`;
         }
         if (p.type === 'select') {
-            return `<div class="ctl-p"><span class="ctl-l">${label}</span><div class="ctl-opts">${
+            return `<div class="ctl-p"><span class="ctl-l">${label}</span><div class="ctl-chips">${
                 p.options.map(o => `<button type="button" class="ctl-chip ${o === val ? 'on' : ''}" data-p="${id}" data-v="${esc(o)}">${esc(o)}</button>`).join('')
             }</div></div>`;
         }
@@ -529,33 +584,34 @@ document.addEventListener('DOMContentLoaded', () => {
         return '';
     }
     function renderLocal() {
-        const aside = document.querySelector('.win-ctl');
-        if (!aside || !local) return;
+        if (!local) return;
         const { manifest: m, values: v } = local;
-        const keepScroll = aside.scrollTop;
-        let h = `<div class="ctl-head">:: CONTROL_MODULE</div>`;
+        const keep = deckEl.scrollTop;
+        let h = `<div class="dl-top"><span class="dl-name">${esc(local.title.toUpperCase())}</span>
+            <button type="button" class="ctl-chip ${codeOpen ? 'on' : ''}" data-code-toggle>&lt;/&gt; CODE</button></div>`;
         if (m.presets) {
-            h += `<div class="ctl-sec">PRESETS</div><div class="ctl-presets">${
+            h += `<div class="ctl-sec">PRESETS</div><div class="ctl-chips">${
                 Object.keys(m.presets).map(k => `<button type="button" class="ctl-chip ${local.preset === k ? 'on' : ''}" data-preset="${esc(k)}">${esc(k)}</button>`).join('')
             }<button type="button" class="ctl-chip ghost" data-preset="__reset">RESET</button></div>`;
         }
-        m.groups.forEach(g => {
-            const on = g.toggle ? !!v[g.toggle] : true;
-            h += `<div class="ctl-group ${on ? 'on' : 'off'}"><div class="ctl-ghead">`;
-            h += g.toggle ? `<button type="button" class="ctl-tog ${on ? 'on' : ''}" data-toggle="${esc(g.toggle)}" aria-pressed="${on}">${on ? 'ON' : 'OFF'}</button>` : `<span class="ctl-fixed"></span>`;
-            h += `<span class="ctl-gname">${esc(g.label)}</span></div>`;
-            if (on) {
-                h += `<div class="ctl-gbody">`;
-                m.params.filter(p => p.group === g.id && p.id !== g.toggle && visible(p, v)).forEach(p => { h += paramHTML(p, v[p.id]); });
-                h += `</div>`;
-            }
-            h += `</div>`;
+        // optional layers as one row of switches, so OFF layers cost no scroll at all
+        const layers = m.groups.filter(g => g.toggle);
+        if (layers.length) {
+            h += `<div class="ctl-sec">LAYERS</div><div class="ctl-chips">${
+                layers.map(g => `<button type="button" class="ctl-chip layer ${v[g.toggle] ? 'on' : ''}" data-toggle="${esc(g.toggle)}" aria-pressed="${!!v[g.toggle]}">${esc(g.label)}</button>`).join('')
+            }</div>`;
+        }
+        // settings: base groups + switched-on layers, each can be folded
+        m.groups.filter(g => !g.toggle || v[g.toggle]).forEach(g => {
+            const params = m.params.filter(p => p.group === g.id && p.id !== g.toggle && visible(p, v));
+            if (!params.length) return;
+            const folded = local.collapsed.has(g.id);
+            h += `<div class="ctl-sect ${folded ? 'collapsed' : ''}"><button type="button" class="ctl-shead" data-fold="${esc(g.id)}">${esc(g.label)}<span class="car">${folded ? '+' : '–'}</span></button><div class="ctl-sbody">`;
+            params.forEach(p => { h += paramHTML(p, v[p.id]); });
+            h += `</div></div>`;
         });
-        h += `<div class="ctl-sec ctl-codehead">:: CODE <span>LIVE</span></div><pre class="ctl-code"></pre>`;
-        aside.innerHTML = h;
-        aside.querySelector('.ctl-code').textContent = local.code;
-        aside.hidden = false;
-        aside.scrollTop = keepScroll;
+        deckLocal.innerHTML = h;
+        deckEl.scrollTop = keep;
     }
     function changed(rerender) {
         if (rerender) renderLocal();
@@ -565,24 +621,29 @@ document.addEventListener('DOMContentLoaded', () => {
     function dropPreset() {
         if (!local || !local.preset) return;
         local.preset = null;
-        document.querySelectorAll('.win-ctl [data-preset].on').forEach(b => b.classList.remove('on'));
+        deckLocal.querySelectorAll('[data-preset].on').forEach(b => b.classList.remove('on'));
     }
 
-    const winContent = document.getElementById('win-content');
-    winContent.addEventListener('input', (e) => {
+    deckLocal.addEventListener('input', (e) => {
         const el = e.target;
         if (!local || !el.dataset || !el.dataset.p) return;
         const p = local.manifest.params.find(x => x.id === el.dataset.p);
         if (!p) return;
         local.values[p.id] = p.type === 'range' ? +el.value : el.value;
-        const out = winContent.querySelector(`[data-out="${CSS.escape(p.id)}"]`);
+        const out = deckLocal.querySelector(`[data-out="${CSS.escape(p.id)}"]`);
         if (out) out.textContent = p.type === 'range' ? fmtVal(p, el.value) : el.value;
         dropPreset();
         changed(false);
     });
-    winContent.addEventListener('click', (e) => {
+    deckLocal.addEventListener('click', (e) => {
         const b = e.target.closest('button');
         if (!b || !local) return;
+        if (b.hasAttribute('data-code-toggle')) { setCodeOpen(!codeOpen); return; }
+        if (b.dataset.fold) {
+            local.collapsed.has(b.dataset.fold) ? local.collapsed.delete(b.dataset.fold) : local.collapsed.add(b.dataset.fold);
+            renderLocal();
+            return;
+        }
         if (b.dataset.preset) {
             const k = b.dataset.preset, m = local.manifest;
             local.values = k === '__reset' ? defaultsOf(m) : Object.assign(defaultsOf(m), m.presets[k]);
@@ -598,4 +659,6 @@ document.addEventListener('DOMContentLoaded', () => {
             changed(true);
         }
     });
+
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && win.style.display === 'flex') closeWindow(); });
 });
